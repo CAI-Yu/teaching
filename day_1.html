@@ -137,7 +137,6 @@ $(document).ready(function () {
 <pre class="r"><code>x = 1:10
 x</code></pre>
 <pre><code>##  [1]  1  2  3  4  5  6  7  8  9 10</code></pre>
-<hr />
 </div>
 </div>
 <div id="section-1" class="section level2 tabset">
@@ -151,7 +150,6 @@ x</code></pre>
 <pre class="r"><code>x = c(3, 6, 2, 9, 1)
 x</code></pre>
 <pre><code>## [1] 3 6 2 9 1</code></pre>
-<hr />
 </div>
 </div>
 <div id="section-2" class="section level2 tabset">
@@ -168,7 +166,6 @@ x</code></pre>
 ## [7] &quot;Sunday&quot;</code></pre>
 <pre class="r"><code>x[6:7]</code></pre>
 <pre><code>## [1] &quot;Saturday&quot; &quot;Sunday&quot;</code></pre>
-<hr />
 </div>
 </div>
 <div id="section-3" class="section level2 tabset">
@@ -196,15 +193,183 @@ x</code></pre>
 <pre class="r"><code>x[c(&quot;Saturday&quot;, &quot;Sunday&quot;)]</code></pre>
 <pre><code>## Saturday   Sunday 
 ##       12       12</code></pre>
-<hr />
 </div>
 </div>
 <div id="section-4" class="section level2 tabset">
 <h2></h2>
+<div id="task-4" class="section level3">
+<h3>task</h3>
+<p>Construct a matrix of random values with 10 rows and 5 columns.</p>
+<p>consider <code>rnorm()</code>, <code>sample()</code>, <code>runif()</code> for random value generation.</p>
 </div>
-<div id="task-4" class="section level2">
-<h2>task</h2>
-<p>Construct a matrix with 10 rows and 5 columns</p>
+<div id="solution-4" class="section level3">
+<h3>solution</h3>
+<pre class="r"><code>m = matrix(rnorm(50), nrow = 10)
+m = matrix(runif(50), nrow = 10)
+m = matrix(sample(10, 10, replace = TRUE), nrow = 10)</code></pre>
+</div>
+</div>
+<div id="section-5" class="section level2 tabset">
+<h2></h2>
+<div id="task-5" class="section level3">
+<h3>task</h3>
+<p>construct a data frame of monthly climate statistics in Heidelberg (<a href="https://en.wikipedia.org/wiki/Heidelberg#collapsibleTable0" class="uri">https://en.wikipedia.org/wiki/Heidelberg#collapsibleTable0</a>).</p>
+</div>
+<div id="solution-5" class="section level3">
+<h3>solution</h3>
+<pre class="r"><code>climate = data.frame(
+    average_high  = c(3.8, 6.1, 10.9, 15.4, 19.9, 23, 25.5, 25.1, 21.5, 15.3, 8.5, 4.8),
+    daily_mean    = c(2.4, 3.7, 7.4, 11.2, 15.5, 18.1, 20.6, 20.1, 16.1, 11.5, 6.3, 3.3),
+    average_low   = c(-1.4, -0.7, 1.9, 4.9, 8.9, 12.2, 14, 13.8, 10.6, 6.7, 2.4, -0.4),
+    precipitation = c(56, 53, 53, 61, 79, 86, 71, 66, 53, 58, 66, 66),
+    sunshine      = c(46, 78, 118, 173, 206, 215, 233, 219, 157, 101, 50, 35)
+)
+rownames(climate) = c(&quot;Jan&quot;, &quot;Feb&quot;, &quot;Mar&quot;, &quot;Apr&quot;, &quot;May&quot;, &quot;Jun&quot;, &quot;Jul&quot;, &quot;Aug&quot;, &quot;Sep&quot;, &quot;Oct&quot;, &quot;Nov&quot;, &quot;Dec&quot;)</code></pre>
+<p>Note: we will use <code>climate</code> variable later.</p>
+</div>
+</div>
+<div id="section-6" class="section level2 tabset">
+<h2></h2>
+<div id="task-6" class="section level3">
+<h3>task</h3>
+<p>construct a list which contains dates in each month this year.</p>
+<p>construct a list which contains some of the following description of yourself:</p>
+<ul>
+<li>name</li>
+<li>age</li>
+<li>interest (more than one)</li>
+<li>do you like programming</li>
+</ul>
+</div>
+<div id="solution-6" class="section level3">
+<h3>solution</h3>
+<pre class="r"><code>date = list(
+    Jan = 1:31, 
+    Feb = 1:28, 
+    Mar = 1:31, 
+    Apr = 1:30, 
+    May = 1:31, 
+    Jun = 1:30,
+    Jul = 1:31,
+    Aug = 1:31, 
+    Sep = 1:30,
+    Oct = 1:31,
+    Nov = 1:30,
+    Dec = 1:31
+)
+
+me = list(
+    name = &quot;Zuguang Gu&quot;,
+    age = 34,
+    interest = c(&quot;movie&quot;, &quot;game&quot;),
+    like_programming = TRUE
+)
+me</code></pre>
+<pre><code>## $name
+## [1] &quot;Zuguang Gu&quot;
+## 
+## $age
+## [1] 34
+## 
+## $interest
+## [1] &quot;movie&quot; &quot;game&quot; 
+## 
+## $like_programming
+## [1] TRUE</code></pre>
+<pre class="r"><code>me$name</code></pre>
+<pre><code>## [1] &quot;Zuguang Gu&quot;</code></pre>
+</div>
+</div>
+</div>
+<div id="readwrite" class="section level1">
+<h1>read/write</h1>
+<div id="section-7" class="section level2 tabset">
+<h2></h2>
+<div id="task-7" class="section level3">
+<h3>task</h3>
+<p>save <code>climate</code> as a csv file</p>
+<p>save <code>climate</code> as a tab-separated file</p>
+</div>
+<div id="solution-7" class="section level3">
+<h3>solution</h3>
+<pre class="r"><code>write.csv(climate, file = &quot;climate.csv&quot;)
+write.table(climate, sep = &quot;\t&quot;, quote = FALSE, file = &quot;climate.tab&quot;)</code></pre>
+</div>
+<div id="task-8" class="section level3">
+<h3>task</h3>
+<p>read climate data back to R</p>
+</div>
+<div id="solution-8" class="section level3">
+<h3>solution</h3>
+<pre class="r"><code>df = read.csv(&quot;climate.csv&quot;, header = TRUE, row.names = 1)
+df = read.table(&quot;climate.tab&quot;, header = TRUE, row.names = 1)</code></pre>
+</div>
+</div>
+</div>
+<div id="descriptive-statistics" class="section level1">
+<h1>Descriptive statistics</h1>
+<div id="section-8" class="section level2 tabset">
+<h2></h2>
+<div id="task-9" class="section level3">
+<h3>task</h3>
+<p>With <code>climate</code>, calcualte the mean/median/sd/ of each column:</p>
+</div>
+<div id="solution-9" class="section level3">
+<h3>solution</h3>
+<pre class="r"><code>mean(climate$average_high)</code></pre>
+<pre><code>## [1] 14.98333</code></pre>
+<pre class="r"><code>mean(climate$daily_mean)</code></pre>
+<pre><code>## [1] 11.35</code></pre>
+<pre class="r"><code>mean(climate$precipitation)</code></pre>
+<pre><code>## [1] 64</code></pre>
+<pre class="r"><code>apply(climate, 2, mean)</code></pre>
+<pre><code>##  average_high    daily_mean   average_low precipitation      sunshine 
+##      14.98333      11.35000       6.07500      64.00000     135.91667</code></pre>
+<pre class="r"><code>apply(climate, 2, median)</code></pre>
+<pre><code>##  average_high    daily_mean   average_low precipitation      sunshine 
+##         15.35         11.35          5.80         63.50        137.50</code></pre>
+<pre class="r"><code>apply(climate, 2, sd)</code></pre>
+<pre><code>##  average_high    daily_mean   average_low precipitation      sunshine 
+##      8.036941      6.688185      5.759281     10.625869     73.768013</code></pre>
+</div>
+</div>
+<div id="section-9" class="section level2 tabset">
+<h2></h2>
+<div id="task-10" class="section level3">
+<h3>task</h3>
+<p>Does temporature correlates to the precipitation or sunshine?</p>
+</div>
+<div id="solution-10" class="section level3">
+<h3>solution</h3>
+<pre class="r"><code>cor(climate$daily_mean, climate$precipitation)</code></pre>
+<pre><code>## [1] 0.5286887</code></pre>
+<pre class="r"><code>cor(climate$daily_mean, climate$sunshine)</code></pre>
+<pre><code>## [1] 0.9404352</code></pre>
+</div>
+</div>
+<div id="section-10" class="section level2 tabset">
+<h2></h2>
+<div id="task-11" class="section level3">
+<h3>task</h3>
+<p>Does the precipitation in May, June, July, Octorber, September and Octorber has difference to to other monthe?</p>
+</div>
+<div id="solution-11" class="section level3">
+<h3>solution</h3>
+<pre class="r"><code>precipitation = climate$precipitation
+t.test(precipitation[5:10],
+       precipitation[c(1:4, 11:12)])</code></pre>
+<pre><code>## 
+##  Welch Two Sample t-test
+## 
+## data:  precipitation[5:10] and precipitation[c(1:4, 11:12)]
+## t = 1.7074, df = 7.2249, p-value = 0.1302
+## alternative hypothesis: true difference in means is not equal to 0
+## 95 percent confidence interval:
+##  -3.637248 22.970582
+## sample estimates:
+## mean of x mean of y 
+##  68.83333  59.16667</code></pre>
+</div>
 </div>
 </div>
 
