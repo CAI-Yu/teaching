@@ -1,0 +1,74 @@
+Day 1. Basic R Manipulation
+=============================
+
+# Basic data format
+
+## {.tabset}
+
+### task
+
+Constuct a numeric vector from 1 to 10.
+
+### solution
+
+```{r}
+x = 1:10
+x
+```
+
+## {.tabset}
+
+### task
+
+Constuct a numeric vector of 3, 6, 2, 9, 1.
+
+### solution
+
+```{r}
+x = c(3, 6, 2, 9, 1)
+x
+```
+
+
+## {.tabset}
+
+### task
+
+Constuct a character vector of weekdays in a week, then extract the weekdays for weekend.
+
+### solution
+
+```{r}
+x = c("Monday", "Tuesday", "Wendesday", "Thursday", "Friday", "Saturday", "Sunday")
+x
+x[6:7]
+```
+
+## {.tabset}
+
+### task
+
+Constuct a numeric vector of when you wake up in the morning in a week and use weekday as 
+the name of the vector, then extract two days of weekdend.
+
+### solution
+
+```{r}
+# way 1:
+x = c("Monday" = 7, "Tuesday" = 7, "Wendesday" = 8, "Thursday" = 9, "Friday" = 8, "Saturday" = 12, "Sunday" = 12)
+x
+# way 2:
+x = c(7, 7, 8, 9, 8, 12, 12)
+names(x) = c("Monday", "Tuesday", "Wendesday", "Thursday", "Friday", "Saturday", "Sunday")
+x
+
+x[6:7] # or
+x[c("Saturday", "Sunday")]
+```
+
+## {.tabset}
+
+## task
+
+Construct a matrix with 10 rows and 5 columns
+
