@@ -68,7 +68,22 @@ x[c("Saturday", "Sunday")]
 
 ## {.tabset}
 
-## task
+### task
 
-Construct a matrix with 10 rows and 5 columns
+Construct a matrix of random values with 10 rows and 5 columns.
+
+consider `rnorm()`, `sample()`, `runif()` for random value generation.
+
+### solution
+
+```{r}
+m = matrix(rnorm(50), nrow = 10)
+m = matrix(runif(50), nrow = 10)
+m = matrix(sample(10, 10, repleace = TRUE), nrow = 10)
+```
+
+## {.tabset}
+
+### task
+
 
