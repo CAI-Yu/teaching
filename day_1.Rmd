@@ -3,6 +3,9 @@ Day 1. Basic R Manipulation
 
 # Basic data format
 
+There are following basic data types in R: vectors, matrices, data frames and lists.
+See https://www.statmethods.net/input/datatypes.html for explanation.
+
 ## {.tabset}
 
 ### task
@@ -34,7 +37,7 @@ x
 
 ### task
 
-Constuct a character vector of weekdays in a week, then extract the weekdays for weekend.
+Constuct a character vector of weekdays in a week, then extract the weekdays for the weekend.
 
 ### solution
 
@@ -48,16 +51,16 @@ x[6:7]
 
 ### task
 
-Constuct a numeric vector of when you wake up in the morning in a week and use weekday as 
-the name of the vector, then extract two days of weekdend.
+Constuct a numeric vector of the time at which you wake up in the morning everyday in a week and use weekdays as 
+names of the vector, then extract the two days in the weekend.
 
 ### solution
 
 ```{r}
-# way 1:
+# solution 1:
 x = c("Monday" = 7, "Tuesday" = 7, "Wendesday" = 8, "Thursday" = 9, "Friday" = 8, "Saturday" = 12, "Sunday" = 12)
 x
-# way 2:
+# solution 2:
 x = c(7, 7, 8, 9, 8, 12, 12)
 names(x) = c("Monday", "Tuesday", "Wendesday", "Thursday", "Friday", "Saturday", "Sunday")
 x
@@ -72,7 +75,8 @@ x[c("Saturday", "Sunday")]
 
 Construct a matrix of random values with 10 rows and 5 columns.
 
-consider `rnorm()`, `sample()`, `runif()` for random value generation.
+Consider `rnorm()`, `sample()`, `runif()` for random value generation. If you don't knonw
+how to use these functions, type `?rnorm`, `?sample` and `?runif` for documentations.
 
 ### solution
 
@@ -86,7 +90,7 @@ m = matrix(sample(10, 10, replace = TRUE), nrow = 10)
 
 ### task
 
-construct a data frame of monthly climate statistics in Heidelberg (https://en.wikipedia.org/wiki/Heidelberg#collapsibleTable0).
+Construct a data frame of monthly climate statistics in Heidelberg (https://en.wikipedia.org/wiki/Heidelberg#collapsibleTable0).
 
 ### solution
 
@@ -101,21 +105,21 @@ climate = data.frame(
 rownames(climate) = c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
 ```
 
-Note: we will use `climate` variable later.
+Note: we will use `climate` variable in later tasks.
 
 ## {.tabset}
 
 
 ### task
 
-construct a list which contains dates in each month this year.
+Construct a list which contains dates in each month this year.
 
-construct a list which contains some of the following description of yourself:
+Construct a list which contains some of the following description of yourself:
 
-- name
-- age
+- name (character)
+- age (numeric)
 - interest (more than one)
-- do you like programming
+- do you like programming (the value should be logical)
 
 ### solution
 
@@ -146,15 +150,20 @@ me$name
 ```
 
 
-# read/write 
+# Read and write tables from/to files
+
+The most common file format for data importing and exporing in R is table-like
+data in text format (e.g. tsv or csv format). There can also be other formats like
+Excel format (xls or xlsx format) or database format (e.g. sql format). Please refer to
+https://www.statmethods.net/input/importingdata.html for explanation.
 
 ## {.tabset}
 
 ### task
 
-save `climate` as a csv file
+Save `climate` as a csv file.
 
-save `climate` as a tab-separated file
+save `climate` as a tab-separated file.
 
 ### solution
 
@@ -167,13 +176,35 @@ write.table(climate, sep = "\t", quote = FALSE, file = "climate.tab")
 
 ### task
 
-read climate data back to R
+Read climate data back to R.
 
 ### solution
 
 ```{r}
 df = read.csv("climate.csv", header = TRUE, row.names = 1)
 df = read.table("climate.tab", header = TRUE, row.names = 1)
+```
+
+# Control structure
+
+Control struction is a basic feature for all programming languages, which basically
+includes `for`, `if-else` and `while`.
+
+## {.tabset}
+
+### task
+
+Only show the dates for the month with 31 days.
+
+### solution
+
+```{r}
+month_name = names(date)
+for(i in seq_along(date)) {
+	if(length(date[[i]]) == 31) {
+		cat(month_name[i], "has 31 days.\n")
+	}
+}
 ```
 
 # Descriptive statistics
@@ -191,6 +222,7 @@ mean(climate$average_high)
 mean(climate$daily_mean)
 mean(climate$precipitation)
 
+# or calculate statistics for all columns at a same time
 apply(climate, 2, mean)
 apply(climate, 2, median)
 apply(climate, 2, sd)
@@ -224,4 +256,114 @@ precipitation = climate$precipitation
 t.test(precipitation[5:10],
 	   precipitation[c(1:4, 11:12)])
 
+```
+
+# Graphics
+
+R is convinient to make complex graphics for representing complex relations in 
+users' datasets, but the mostly used graphics are still those basic graphics like
+scatter plot or barplot which gives a quick view of the patterns in the data.
+
+
+## {.tabset}
+
+### task
+
+Plot the daily mean temporature in `climate` as barplot.
+
+### solution
+
+Type `?par` to see the meaning of `las =3`.
+
+```{r}
+barplot(climate$daily_mean)
+par(las = 3)
+barplot(climate$daily_mean, names.arg = rownames(climate))
+par(las = 0)
+
+par(las = 1)
+barplot(climate$daily_mean, names.arg = rownames(climate), horiz = TRUE)
+par(las = 0)
+```
+
+## {.tabset}
+
+### task
+
+Plot `average_high`, `daily_mean` and `average_low` as boxplot
+to see the differences between these three statistics.
+
+### solution
+
+```{r}
+boxplot(climate[, 1:3])
+```
+
+## {.tabset}
+
+### task
+
+Plot the five statistics in `climate` in a same page (by barplots, point plots
+or line plots).
+
+### solution
+
+```{r}
+par(mfrow = c(2, 3))
+stat_name = colnames(climate)
+for(i in 1:5) {
+	barplot(climate[, i], ylab = stat_name[i])
+}
+par(mfrow = c(1, 1))
+
+# by points
+par(mfrow = c(2, 3))
+stat_name = colnames(climate)
+for(i in 1:5) {
+	plot(1:12, climate[, i], ylab = stat_name[i])
+}
+par(mfrow = c(1, 1))
+
+# by lines
+par(mfrow = c(2, 3))
+stat_name = colnames(climate)
+for(i in 1:5) {
+	plot(1:12, climate[, i], type = "l", ylab = stat_name[i])
+}
+par(mfrow = c(1, 1))
+```
+
+
+
+## {.tabset}
+
+### task
+
+Make pair-wise scatter plots for the five statistics in `climate`:
+
+### solution
+
+```{r}
+pairs(climate, upper.panel = NULL)
+```
+
+
+## {.tabset}
+
+### task
+
+From above plot, we found an interesting pattern between temporature
+and sunshine. To better reveal the potential reason for this special pattern,
+we add month names as text to the points in the plot. Can you explain 
+the pattern in the plot?
+
+### solution
+
+```{r}
+plot(climate$daily_mean, climate$sunshine, type = "n")
+text(climate$daily_mean, climate$sunshine, rownames(climate))
+
+# we do similar for precipitation and sunsine
+plot(climate$precipitation, climate$sunshine, type = "n")
+text(climate$precipitation, climate$sunshine, rownames(climate))
 ```
