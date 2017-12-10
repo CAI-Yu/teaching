@@ -359,11 +359,19 @@ the pattern in the plot?
 
 ### solution
 
+Recall the correlation between `daily_mean` and `sunshine` is very high, but
+according to following plot, do you still think the correlation is just
+a simple linear correlation or there are something complex which is hidden
+by the correlation coefficient?
+
 ```{r}
 plot(climate$daily_mean, climate$sunshine, type = "n")
 text(climate$daily_mean, climate$sunshine, rownames(climate))
+```
 
-# we do similar for precipitation and sunsine
+We do similar for precipitation and sunsine
+
+```{r}
 plot(climate$precipitation, climate$sunshine, type = "n")
 text(climate$precipitation, climate$sunshine, rownames(climate))
 ```
