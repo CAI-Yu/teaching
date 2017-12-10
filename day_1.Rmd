@@ -1,6 +1,9 @@
 Day 1. Basic R Manipulation
 =============================
 
+by Zuguang Gu (z.gu@dkfz.de), `r Sys.time()`. The github repository
+for this material is at https://github.com/eilslabs/teaching.
+
 # Basic data format
 
 There are following basic data types in R: vectors, matrices, data frames and lists.
