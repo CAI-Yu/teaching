@@ -254,3 +254,6 @@ j3 = sum(width(intersect(cgi_chr21, intergenic))) /
      sum(width(union(cgi_chr21, intergenic)))
 j3
 ```
+
+With the Jaccard coefficient, we can make the conclusion that CpG island is more associated to
+promoters/exons while less associated to intergenic regions.
