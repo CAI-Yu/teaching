@@ -13,6 +13,8 @@ knitr::opts_chunk$set(
 by Zuguang Gu (z.gu@dkfz.de), `r Sys.time()`. The github repository
 for this material is at https://github.com/eilslabs/teaching.
 
+# The GenomicRanges package
+
 The **GenomicRanges** package provides a general `GRanges` class for storing genomic regions and related
 information. For gene-related regions, there are such as genes, exons, promoters. We first load the **GenomicRanges**
 package:
