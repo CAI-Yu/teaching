@@ -231,13 +231,13 @@ where one overlaps to tss and the other is far from TSS (mean distance ~ 10kb).
 ### task
 
 There is a statistic called the Jaccard coefficient which measures how two sets of regions correlate.
-If we denote set 1 as $S1$ and set 2 as $S2$, the Jaccard coefficient is defined as:
+If we denote set 1 as $S_1$ and set 2 as $S_2$, the Jaccard coefficient is defined as:
 
-$$ Jaccard = \frac {\bigcap(S1, S2)}{\bigcup(S1, S2)} $$
+$$ Jaccard = \frac {\bigcap(S_1, S_2)}{\bigcup(S_1, S_2)} $$
 
 Please implement code to calculate the Jaccard coefficient between CpG island and promoters/exons/intergenic regions.
 
-Hint: to calculate the intersection of S1 and S2, use `intersect()` function. To calculate the union of S1 and S2,
+Hint: to calculate the intersection of $S_1$ and $S_2$, use `intersect()` function. To calculate the union of $S_1$ and $S_2$,
 use `union()` function. To calculate the "size" of the set, use `sum(width(...))` function which is the total
 width of the regions in the set.
 
