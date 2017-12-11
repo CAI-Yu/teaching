@@ -235,8 +235,7 @@ If we denote set 1 as $S1$ and set 2 as $S2$, the Jaccard coefficient is defined
 
 $$ Jaccard = \frac {\bigcap(S1, S2)}{\bigcup(S1, S2)} $$
 
-Please implement code to calculate the Jaccard coefficient between CpG island and promoters and the Jaccard
-coefficient between CpG island and exons.
+Please implement code to calculate the Jaccard coefficient between CpG island and promoters/exons/intergenic regions.
 
 Hint: to calculate the intersection of S1 and S2, use `intersect()` function. To calculate the union of S1 and S2,
 use `union()` function. To calculate the "size" of the set, use `sum(width(...))` function which is the total
@@ -251,4 +250,7 @@ j1
 j2 = sum(width(intersect(cgi_chr21, exons, ignore.strand = TRUE))) /
      sum(width(union(cgi_chr21, exons, ignore.strand = TRUE)))
 j2
+j3 = sum(width(intersect(cgi_chr21, intergenic))) /
+     sum(width(union(cgi_chr21, intergenic)))
+j3
 ```

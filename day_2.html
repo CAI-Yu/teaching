@@ -123,7 +123,7 @@ $(document).ready(function () {
 
 <div id="day-2.-deal-with-genomic-regions" class="section level1">
 <h1>Day 2. Deal with genomic regions</h1>
-<p>by Zuguang Gu (<a href="mailto:z.gu@dkfz.de">z.gu@dkfz.de</a>), 2017-12-11 22:04:18. The github repository for this material is at <a href="https://github.com/eilslabs/teaching" class="uri">https://github.com/eilslabs/teaching</a>.</p>
+<p>by Zuguang Gu (<a href="mailto:z.gu@dkfz.de">z.gu@dkfz.de</a>), 2017-12-11 22:05:50. The github repository for this material is at <a href="https://github.com/eilslabs/teaching" class="uri">https://github.com/eilslabs/teaching</a>.</p>
 </div>
 <div id="the-genomicranges-package" class="section level1">
 <h1>The GenomicRanges package</h1>
@@ -525,7 +525,7 @@ cgi_chr21</code></pre>
 <h3>task</h3>
 <p>There is a statistic called the Jaccard coefficient which measures how two sets of regions correlate. If we denote set 1 as <span class="math inline">\(S1\)</span> and set 2 as <span class="math inline">\(S2\)</span>, the Jaccard coefficient is defined as:</p>
 <p><span class="math display">\[ Jaccard = \frac {\bigcap(S1, S2)}{\bigcup(S1, S2)} \]</span></p>
-<p>Please implement code to calculate the Jaccard coefficient between CpG island and promoters and the Jaccard coefficient between CpG island and exons.</p>
+<p>Please implement code to calculate the Jaccard coefficient between CpG island and promoters/exons/intergenic regions.</p>
 <p>Hint: to calculate the intersection of S1 and S2, use <code>intersect()</code> function. To calculate the union of S1 and S2, use <code>union()</code> function. To calculate the “size” of the set, use <code>sum(width(...))</code> function which is the total width of the regions in the set.</p>
 </div>
 <div id="solution" class="section level3">
@@ -538,6 +538,10 @@ j1</code></pre>
      sum(width(union(cgi_chr21, exons, ignore.strand = TRUE)))
 j2</code></pre>
 <pre><code>## [1] 0.05792093</code></pre>
+<pre class="r"><code>j3 = sum(width(intersect(cgi_chr21, intergenic))) /
+     sum(width(union(cgi_chr21, intergenic)))
+j3</code></pre>
+<pre><code>## [1] 0.002363584</code></pre>
 </div>
 </div>
 </div>
