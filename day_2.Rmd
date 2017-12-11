@@ -1,0 +1,213 @@
+Day 2. Deal with genomic regions
+===================================
+
+
+```{r, echo = FALSE}
+library(knitr)
+knitr::opts_chunk$set(
+    error = FALSE,
+    message = FALSE,
+    warning = FALSE)
+```
+
+by Zuguang Gu (z.gu@dkfz.de), `r Sys.time()`. The github repository
+for this material is at https://github.com/eilslabs/teaching.
+
+The **GenomicRanges** package provides a general `GRanges` class for storing genomic regions and related
+information. For gene-related regions, there are such as genes, exons, promoters. We first load the **GenomicRanges**
+package:
+
+```{r}
+library(GenomicRanges)
+```
+
+If there is error, it probably means you haven't installed it yet. You can install the package by following commands:
+
+```{r, eval = FALSE}
+source("https://bioconductor.org/biocLite.R")
+biocLite("GenomicRanges")
+```
+
+**GenomicRanges** is a base package for almost all Genomic data analysis. An introductory vignette can be found
+[here](https://bioconductor.org/packages/release/bioc/vignettes/GenomicRanges/inst/doc/GenomicRangesIntroduction.pdf).
+
+Each genomic region (or called an interval, a range) is composed with its chromosome, a start position and an end
+position. An example of `GRanges` object looks like:
+
+```{r}
+gr = GRanges(seqnames = "chr1", 
+	ranges = IRanges(start = c(1000, 6000), 
+		             end   = c(2000, 7000))
+)
+gr
+```
+
+## Import text files to GRanges objects
+
+The public resources for genomic region annotations (mostly from [UCSC database](https://genome.ucsc.edu/cgi-bin/hgTables)) 
+or other region-based annotations (e.g. SNPs, indels from international consortiums) are mainly stored as text files in table-like
+format. For these text files, there are always columns for chromosomes, start positions and end positions for different 
+genomic features, thus, we can fist use `read.table()` to read in to R and then use `GRanges()` function to convert to `GRanges` objects.
+
+Following we import CpG islands annotation to `GRanges` object.
+
+```{r}
+df = read.table("cpg_islands_hg19.bed", sep = "\t")
+head(df)
+# only the first three columns are used
+cgi = GRanges(seqnames = df[, 1], ranges = IRanges(df[, 2], df[, 3]))
+cgi
+```
+
+## Import transcriptome annotations
+
+There are also several standard formats for storing transcriptome annotations (e.g. where are genes, where are exons). One of
+the commonly used format is the GTF format. One standard transcriptome annotation is the [Gencode annotation](https://www.gencodegenes.org/releases/current.html) 
+and they provide data download for GTF format.
+
+A GTF format is simply a text file where gene-related annotations are stored as columns. Download a testing gencode annotation file
+and you can see the content of this file in your text editor:
+
+```{r, eval = FALSE}
+# download the file to your working directory
+download.file("", "gencode_v19_chr21.gtf")
+```
+
+In R, there is a **GenomicFeatures** package which provides a standard way to import GTF files into R objects. First load the **GenomicFeatures** package or install it if it is not installed yet.
+
+```{r}
+library(GenomicFeatures)
+```
+
+If it is not installed yet:
+
+```{r, eval = FALSE}
+biocLite(GenomicFeatures)
+```
+
+And use `makeTxDbFromGFF()` to import the GTF files.
+
+```{r}
+txdb = makeTxDbFromGFF("gencode_v19_chr21.gtf")
+```
+
+In **GenomicFeatures** package, the transcriptome data is stored as a `TxDb` object. The `TxDb` is actually an interface
+of a local file-based database and the package provides a lot functions to extract gene-related annotations:
+
+```{r}
+genes = genes(txdb)
+genes
+exons = exons(txdb)
+exons
+```
+
+Note in above code, a normal variable can have same name as a function name and they will not conflict 
+because R can distinguish whether it is the variable or a function.
+
+Since a gene can have alternative transcripts, you can get a list of `GRanges` objects where each corresponds
+to transcripts for a gene.
+
+```{r}
+gl = transcriptsBy(txdb)
+gl
+```
+
+
+## Basic region-based manipulation
+
+Extract TSS of genes:
+
+```{r}
+tss = promoters(genes, upstream = 0, downstream = 1)
+```
+
+Extract promoters of genes
+
+```{r}
+promoters = promoters(genes, upstream = 1000, downstream = 200)
+promoters
+```
+
+Extract intergenic regions. Since genes have strand information while intergenic regions do not,
+we need to remove the strand information and extract the complementary regions of genes.
+
+```{r}
+g2 = genes
+strand(g2) = "*" # there are three possible values for strand, "*" means no strand information
+intergenic = gaps(g2)
+```
+
+The gene annotation in Gencode is actually the union of all its transcripts. We can test it with
+the first gene in chromosome 21:
+
+```{r}
+# all transcript for the first gene on chromosome 21
+gl[[1]]
+# take the union of all its transcripts:
+reduce(gl[[1]])
+# and compare to the gene annotation in `genes` variable
+genes[1]
+```
+
+## Set operations on genomic regions
+
+Set operations relate to how to associate two diffrent types of genomic annotations.
+In following example, we associate or annotate CpG islands to gene promoters.
+
+We look for which promoters overlap to CpG islands. Here we use `findOverlaps()` to
+do intersection between two sets of regions:
+
+```{r}
+mtch = findOverlaps(cgi, promoters)
+mtch
+```
+
+`mtch` contains two columns where e.g. the first row means the 26639^th row in `cgi`
+overlaps to row 676^th in `promoters`.
+
+Normally we don't directly use `mtch`, we convert it to a matrix and later we can use 
+the indices in the two columns:
+
+```{r}
+mtch = as.matrix(mtch)
+head(mtch)
+```
+
+With the correspondance between the two columns of indices, we can extract those promoters
+overlapping to Cpg islands:
+
+```{r}
+cgi_promoters = promoters[unique(mtch[, 2])]
+cgi_promoters
+```
+
+## Distance-based annotation
+
+Another commonly used annotation is to look for nearest genomic features, e.g. nearest genes.
+Since we only have transcriptome information on chromosome 21, we also subset `cgi` to chromosome 21:
+
+```{r}
+cgi_chr21 = cgi[seqnames(cgi) == "chr21"]
+nst = distanceToNearest(cgi_chr21, tss)
+nst
+```
+
+`nst` has a table-like structure which contains the indices of nearest tss for each CpG island
+as well as the distance itself. To extract these information:
+
+```{r}
+nst = as.data.frame(nst)
+head(nst)
+cgi_chr21$near_tss_gene = names(tss)[nst$subjectHits]
+cgi_chr21$dist_to_nearest_tss = nst$distance
+```
+
+And let's look at the distribution of the distance:
+
+```{r}
+hist(cgi_chr21$dist_to_nearest_tss)
+hist(log10(cgi_chr21$dist_to_nearest_tss+1))
+```
+
+After log10-transformation of the distance, we found there are two groups of CpG islands
+where one overlaps to tss and the other one is far from TSS (mean distance ~ 10kb)
