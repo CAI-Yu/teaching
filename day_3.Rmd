@@ -334,7 +334,6 @@ Download the files
 ```{r eval = FALSE}
 download.file("https://tcga-data.nci.nih.gov/docs/publications/gbm_exp/unifiedScaled.txt", "unifiedScaled.txt")
 download.file("https://eilslabs.github.io/teaching/tcga_gbm_subtype.RData", "tcga_gbm_subtype.RData")
-load("tcga_gbm_subtype.RData")
 ```
 
 ```{r}
@@ -348,6 +347,7 @@ mat_scaled = t(scale(t(mat)))
 km = kmeans(t(mat_scaled), centers = 4)
 km = km$cluster
 
+load("tcga_gbm_subtype.RData")
 Heatmap(mat_scaled, name = "expr", show_row_names = FALSE, show_column_names = FALSE,
 	top_annotation = HeatmapAnnotation(km = as.character(km), subtype = subtype[colnames(mat_scaled)], 
 		show_annotation_name = TRUE),
