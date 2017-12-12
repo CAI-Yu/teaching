@@ -329,6 +329,14 @@ steps:
 
 #### solution
 
+Download the files
+
+```{r eval = FALSE}
+download.file("https://tcga-data.nci.nih.gov/docs/publications/gbm_exp/unifiedScaled.txt", "unifiedScaled.txt")
+download.file("https://eilslabs.github.io/teaching/tcga_gbm_subtype.RData", "tcga_gbm_subtype.RData")
+load("tcga_gbm_subtype.RData")
+```
+
 ```{r}
 mat = read.table("unifiedScaled.txt")
 mat = as.matrix(mat)
