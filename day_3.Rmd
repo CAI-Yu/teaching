@@ -1,0 +1,348 @@
+Day 3. RNASeq downsteam analysis, Part 1
+===================================
+
+
+```{r, echo = FALSE}
+library(knitr)
+knitr::opts_chunk$set(
+    error = FALSE,
+    message = FALSE,
+    warning = FALSE,
+    fig.width = 6,
+    fig.height = 6)
+```
+
+by Zuguang Gu (z.gu@dkfz.de), `r Sys.time()`. The github repository
+for this material is at https://github.com/eilslabs/teaching.
+
+To run code in this document, following packages should be installed:
+
+```{r, eval = FALSE}
+source("https://bioconductor.org/biocLite.R")
+biocLite("airway")
+biocLite("DESeq2")
+biocLite("ComplexHeatmap")
+```
+
+Almost all RNASeq downstream analysis starts with the count table which is
+generated from the pipeline. Here we use an example count table from **airway** package
+where there is a dataset called `airway`. We load this dataset
+by using `data()` function.
+
+```{r}
+library(airway)  # load the airway package
+data(airway)     # load a dataset called airway, and now there is an object called airway
+airway
+```
+
+`airway` is a so-called `RangedSummarizedExperiment` class object. To make it simple, 
+we directly convert it to a matrix.
+
+```{r}
+count = assay(airway)
+head(count)
+```
+
+The `SummarizedExperiment` and the `RangedSummarizedExperiment` classes are too advanced 
+for beginners, and on the other hand, saving and using expression data as matrices is more common
+and straightforward for many experiments, thus, in this practice, we start the analysis
+with the count table as a numeric matrix.
+
+The `airway` dataset also provides annotation/condition variables. but similarly, they are
+stored in a format that might be strange for beginners, thus we convert it to the normal data frame.
+
+```{r}
+anno = as.data.frame(colData(airway))
+anno = anno[, c("cell", "dex")]
+anno
+```
+
+`count` and `anno` are the input data for all our downstream analysis.
+
+## Descriptive analysis
+
+In the count matrix `count`, genes are in rows and samples are in columns, while
+in the annotation data frame `anno`, samples are in rows and annotation types
+are in columns. You might feel strange that why samples are not stored by columns
+in `anno`. The reason is in a data frame, each column should contain same type
+of information, e.g. for `anno[, "cell"]` column, it should only contain annotation
+for the type of cells.
+
+One thing that is very important is you need to make sure the sample order
+in `count` should be same as sample order in `anno`:
+
+```{r}
+colnames(count)
+rownames(anno)
+```
+
+Check how many genes and how many samples in `count`:
+
+```{r}
+dim(count) # `dim` means dimension
+nrow(count) # or you can get these two numbers separately
+ncol(count)
+```
+
+Library size is defined as the total number of counts for all genes in each sample.
+The library size will be used to normalize samples to remove systematic bias.
+
+```{r}
+library_size = apply(count, 2, sum) # rows are the first dimension and columns are the second dimension
+library_size = colSums(count) # or a faster way
+```
+
+Since there are `r nrow(count)` genes in `count`, there are many genes that are not
+expressed or have counts of zero. We can calculate how many genes are expressed
+in each sample.
+
+```{r}
+apply(count, 2, function(x) sum(x > 0)/length(x))
+```
+
+The self-defined function `function(x) sum(x > 0)/length(x)` will be executed to each column in `count` and
+values in "current column" will be sent to this self-defined function as the argument
+`x`. The function body `sum(x > 0)/length(x)` just calculates the percent of 
+non-zero values in the column.
+
+The data range of raw counts always increases exponentially (by looking at the quantiles of `count`),
+thus log-transformation should always be applied to `count` if you want to see data distribution of counts.
+
+```{r}
+apply(count, 2, quantile)
+apply(log2(count + 1), 2, quantile)
+```
+
+## Normalization
+
+Normalization is a procedure to make samples comparible. E.g. if one gene has an expression
+value of 10 in sample 1 and another expression value of 12 in sample 2, can we make conclusion
+that this gene expressed higher in sample 2 than sample 1? You can not make such conclusion
+if you do not do normalization.
+
+There are several normalization methods which are applied to the count table. Some of them 
+will be introduced here.
+
+### RPKM
+
+RPKM stands for Reads Per Kilobase Million. It also normalizes gene length. For gene i and sample j, the RPKM
+value is calculated as:
+
+$$ RPKM_{i,j} = \frac{count_{i,j}}{librarySize_j*geneLength_i} * 10^9 $$
+
+To normalize `count`, the code looks like:
+
+```{r, eval = FALSE}
+# this block of code is not runable because we do not have the information of gene length
+rpkm = matrix(0, nrow = nrow(count), ncol = ncol(count))
+rownames(rpkm) = rownames(count)
+colnames(rpkm) = colnames(count)
+for(i in seq_len(nrow(count))) {
+	rpkm[i, ] = count[i, ] / gene_length[i]
+}
+
+for(j in seq_len(ncol(count))) {
+	rpkm[, j] = rpkm[, j] / library_size[j]
+}
+
+rpkm = 10^9 * rpkm
+```
+
+In further analysis, we usually use `log2(rpkm + 1)`.
+
+### DESeq2 normalization
+
+DESeq2 normalization is a more advanced method. To show the problem 
+when comparing counts for two samples:
+
+```{r}
+plot(log2(count[, 1] + 1), log2(count[, 2] + 1), 
+	pch = 16, cex = 0.3, col = "#00000040")
+```
+
+We can observe for the lowly expressed genes, the cross-sample variance 
+gets higher. We can also observe if we directly plot the cross-sample mean
+verse cross-sample standard deviation:
+
+```{r}
+plot(apply(log2(count+1), 1, mean), apply(log2(count+1), 1, sd), 
+	pch = 16, cex = 0.3, col = "#00000040")
+```
+
+It shows clearly the standard deviation increase for the lowly expressed genes.
+
+**DESeq2** package provides a function `vst()` which applies an algorithm
+called "variance Stabilization" and can reduce the noise from lowly expressed genes.
+
+Applying **DESeq2** normalization is simple, just call `vst()` function:
+
+```{r}
+library(DESeq2)
+deseq2 = vst(count)
+```
+
+Now we make the scatterplot for the first and the second samples with the **DESeq2** normalized values.
+
+```{r}
+plot(deseq2[, 1], deseq2[, 2], pch = 16, cex = 0.3, col = "#00000040")
+```
+
+You can see basically the effect by lowly expressed has been removed.
+
+### General distribution of expression in each sample
+
+In following sections, we use the normalized matrix `deseq2` for analysis.
+
+First we look at the qunatiles of each column:
+
+```{r}
+apply(deseq2, 2, quantile)
+```
+
+We can plot the density distribution for each sample:
+
+```{r, fig.width = 14, fig.height = 14}
+par(mfrow = c(3, 3))
+for(i in 1:ncol(deseq2)) {
+	plot(density(deseq2[, i]), main = colnames(deseq2)[i])
+}
+par(mfrow = c(1, 1))
+```
+
+As we observe, there are long tails for all distributions. To see the peaks
+in the distributions more clearly, we manually set the ranges on x-axes:
+
+
+```{r, fig.width = 14, fig.height = 14}
+par(mfrow = c(3, 3))
+for(i in 1:ncol(deseq2)) {
+	plot(density(deseq2[, i]), main = colnames(deseq2)[i], xlim = c(4, 6))
+}
+par(mfrow = c(1, 1))
+```
+
+When you have a lot of samples (let's say more than 20), it is not possible to plot density distributions for
+all samples. Instead we can use heatmap to show density distributions:
+
+```{r}
+library(ComplexHeatmap)
+densityHeatmap(deseq2, range = c(4, 6))
+```
+
+In the density heatmap, each column corresponds to one sample and colors are used to represent density values
+in the distribution.
+
+All these statistics and plots (quantiles, density distribution) show the global distribution or pattern
+are very similar between samples, in other words, there is no "bad samples" and all samples are comparible,
+and can be taken into downstream analysis.
+
+### Unsupervised exploring
+
+When you know nothing about the subgroup of your samples, we normally do unsupervised classification first.
+
+To see how the samples are separated from each other, we always do dimension reduction by PCA analysis
+or MDS (multi-dimension scaling).
+
+In following code, we demonstrate the usage of MDS (by the function `cmdscale()`).
+
+The input for `cmdscale()` should be a distance object and can be generated directly by `dist()` function.
+
+```{r}
+sc = cmdscale(dist(t(deseq2)))
+plot(sc, pch = 16)
+```
+
+From above plot, we can see there are two groups. We can color the points according to different
+sample annotations.
+
+```{r, fig.width = 12}
+par(mfrow = c(1, 2))
+dex_col = c("trt" = "red", "untrt" = "blue")
+plot(sc, pch = 16, col = dex_col[anno$dex], main = "A) color by dex")
+
+cell_col = c("N61311" = "red", "N052611" = "blue", "N080611" = "darkgreen", "N061011" = "orange")
+plot(sc, pch = 16, col = cell_col[anno$cell], main = "B) color by cell")
+```
+
+The largest difference between samples are the difference between "trt" group and "untrt" group. 
+However, the difference between cell types seems to be the secondary separation between samples.
+
+To be more clear to see how these separations happen, we can apply hierarchical clustering on samples
+and make heatmap.
+
+To make the heatmap and clustering, normally we only extract top n most variable genes.
+
+```{r}
+all_sds = apply(deseq2, 1, sd)
+top_1k_index = order(all_sds, decreasing = TRUE)[1:1000]
+mat = deseq2[top_1k_index, ]
+mat_scaled = t(scale(t(mat)))
+Heatmap(mat_scaled, name = "expr", show_row_names = FALSE,
+	top_annotation = HeatmapAnnotation(df = anno, show_annotation_name = TRUE)
+)
+```
+
+The heatmap shows the two "N080611" cell types are more distinct from others while for the remaining
+samples, the main difference is due to "trt/untrt".
+
+When cluster columns, hierarchical clustering is not always a good option. Since here we know there
+are two major groups in columns, we can apply k-means clustering for classification.
+
+```{r}
+km = kmeans(t(mat_scaled), centers = 2)
+km = km$cluster
+km
+```
+
+Now you can see each samples has a class label (either 1 or 2).
+
+We add the class label from k-means clustering to the heatmap. Note we do not apply
+hierarchical clustering on columns any more by setting `cluster_columns = FALSE`.
+
+```{r}
+Heatmap(mat_scaled, name = "expr", show_row_names = FALSE,
+	top_annotation = HeatmapAnnotation(df = anno, km = as.character(km), show_annotation_name = TRUE),
+	cluster_columns = FALSE, column_order = order(km), column_title = "by k-means clustering"
+)
+```
+
+## Exercise
+
+### {.tabset}
+
+#### task
+
+Please apply subgroup classification on TCGA GBM expression dataset. 
+The data is from https://tcga-data.nci.nih.gov/docs/publications/gbm_exp/
+
+The TCGA subtype is avaialble at . Can you compare the consistency to the subgroup
+that you find by k-means clustering?
+
+steps:
+
+1. download the expression matrix by using `download.file()`. The file to download is at https://tcga-data.nci.nih.gov/docs/publications/gbm_exp/unifiedScaled.txt
+2. read the data into R by `read.table()`, please note you need to convert to a matrix
+3. extract top 1000 genes with highest variance
+4. scale rows by `scale()` function
+5. apply k-means clustering on the scaled matrix with 4 groups by `kmeans()` function
+6. visualize the results by heatmap by `Heatmap()` function.
+
+#### solution
+
+```{r}
+mat = read.table("unifiedScaled.txt")
+mat = as.matrix(mat)
+all_sds = apply(mat, 1, sd)
+top_1k_index = order(all_sds, decreasing = TRUE)[1:1000]
+mat = mat[top_1k_index, ]
+mat_scaled = t(scale(t(mat)))
+
+km = kmeans(t(mat_scaled), centers = 4)
+km = km$cluster
+
+Heatmap(mat_scaled, name = "expr", show_row_names = FALSE, show_column_names = FALSE,
+	top_annotation = HeatmapAnnotation(km = as.character(km), subtype = subtype[colnames(mat_scaled)], 
+		show_annotation_name = TRUE),
+	cluster_columns = FALSE, column_order = order(km)
+)
+```
