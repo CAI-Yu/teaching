@@ -315,7 +315,7 @@ Heatmap(mat_scaled, name = "expr", show_row_names = FALSE,
 Please apply subgroup classification on TCGA GBM expression dataset. 
 The data is from https://tcga-data.nci.nih.gov/docs/publications/gbm_exp/
 
-The TCGA subtype is avaialble at . Can you compare the consistency to the subgroup
+The TCGA subtype is avaialble at https://eilslabs.github.io/teaching/tcga_gbm_subtype.RData. Can you compare the consistency to the subgroup
 that you find by k-means clustering?
 
 steps:
@@ -331,12 +331,12 @@ steps:
 
 Download the files
 
-```{r eval = FALSE}
+```{r, eval = FALSE}
 download.file("https://tcga-data.nci.nih.gov/docs/publications/gbm_exp/unifiedScaled.txt", "unifiedScaled.txt")
 download.file("https://eilslabs.github.io/teaching/tcga_gbm_subtype.RData", "tcga_gbm_subtype.RData")
 ```
 
-```{r}
+```{r, fig.width = 12}
 mat = read.table("unifiedScaled.txt")
 mat = as.matrix(mat)
 all_sds = apply(mat, 1, sd)
