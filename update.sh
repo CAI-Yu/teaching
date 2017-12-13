@@ -1,6 +1,4 @@
-for f in `ls *.Rmd`; do
-	Rscript -e "rmarkdown::render('$f', rmarkdown::html_document())"
-done
+Rscript -e "rmarkdown::render('day_4.Rmd', rmarkdown::html_document())"
 git add --all
 git commit -m "update"
 git push origin master

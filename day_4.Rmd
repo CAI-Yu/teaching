@@ -15,7 +15,7 @@ knitr::opts_chunk$set(
 by Zuguang Gu (z.gu@dkfz.de), `r Sys.time()`. The github repository
 for this material is at https://github.com/eilslabs/teaching.
 
-We will use three objects `count`, `deseq2` and `anno` which have been generated on day 3. 
+We will use the three objects `count`, `deseq2` and `anno` which have been generated on [day 3](day_3.html). 
 If you forget how to generate them, just run following code:
 
 ```{r}
@@ -30,4 +30,378 @@ anno = as.data.frame(colData(airway))
 anno = anno[, c("cell", "dex")]
 ```
 
+## Differential expression analysis by classical statistical test
 
+Generally, to compare two groups which are represented as two numeric vectors, we use [t-test](https://en.wikipedia.org/wiki/Student%27s_t-test) 
+if we assume the data follows a normal distribution or a rank-based test like [Wilcoxon test](https://en.wikipedia.org/wiki/Mann%E2%80%93Whitney_U_test) if we test it non-parametricly (here "non-parametric" means no prior statistical distribution is assumed
+for the data).
+
+First we test whether the 3rd gene is differentially expressed between "trt" and "untrt" conditions.
+
+```{r}
+# recall we need to use the normalized values to compare between samples
+x = deseq2[3, ]
+# extract the expression values in "trt" group
+x1 = x[anno$dex == "trt"]
+# extract the expression values in "untrt" group
+x2 = x[anno$dex == "untrt"]
+```
+
+`t.test()` function can be applied to `x1` and `x2` to perform t-test:
+
+```{r}
+t.test(x1, x2)
+```
+
+We can see the p-value is significant (< 0.05), which means this gene is significantly differentially epxressed
+between "trt" and "untrt" groups.
+
+We can confirm it by looking at the boxplot.
+
+```{r}
+boxplot(list(trt = x1, untrt = x2))
+```
+
+The results returned by `t.test()` can be assigned to a variable.
+
+```{r}
+test = t.test(x1, x2)
+```
+
+And the p-value can be obtained from `test` variable.
+
+```{r}
+# e.g. the p-value
+test$p.value
+```
+
+
+Next we test differential expression of the 12th gene similarly by t-test.
+
+```{r}
+x = deseq2[12, ]
+x1 = x[anno$dex == "trt"]
+x2 = x[anno$dex == "untrt"]
+t.test(x1, x2)
+boxplot(list(trt = x1, untrt = x2))
+```
+
+We can see this gene almost shows no difference between "trt"/"untrt".
+
+We can test these two genes by the non-parametric Wilcoxon rank-based test by the `wilcox.test()` function.
+
+```{r}
+x = deseq2[3, ]
+x1 = x[anno$dex == "trt"]
+x2 = x[anno$dex == "untrt"]
+wilcox.test(x1, x2)
+
+x = deseq2[12, ]
+x1 = x[anno$dex == "trt"]
+x2 = x[anno$dex == "untrt"]
+wilcox.test(x1, x2)
+```
+
+You may see the p-values are difference between different testing methods. This is what it should be because
+the p-value is always calculated from the distribution of the null hypothesis and different tests have different
+null hypothesis, however, the p-value should not differ too much.
+
+For the complete gene expression data, we need to apply testing for all genes. We can do it in a `for` loop or simply
+use `apply()` function.
+
+```{r}
+p_value_t_test = apply(deseq2, 1, function(x) {
+	x1 = x[anno$dex == "trt"]
+	x2 = x[anno$dex == "untrt"]
+	if(length(unique(x1)) == 1 || length(unique(x2)) == 1) {
+		return(NA)
+	} else {
+		t = t.test(x1, x2)
+		return(t$p.value)
+	}
+})
+```
+
+If above code, the self-defined function will be applied to each row in `deseq2` matrix.
+
+For `x1` and `x2` which are involved in the t-test, both vectors should have at least two distinct values, and
+that is way we assign `NA` if `x1` or `x2` has no enough data points.
+
+Here we don't suggest to use Wilcoxon test for this dataset because the number of data points in the two groups (which is 4)
+are too small.
+
+## Multiple testing
+
+Each gene is applied by a test and has a p-value. The p-value means the probability that the data follows the null hypothesis.
+E.g. if a gene has a p-value of 0.01, it means the probability of saying "trt"/"untrt" has no difference is 0.01. 
+Or in other words, the probability of the conclusion "the gene is differentially expressed between trt/untrt" is wrong is 0.01.
+(This explanation is not strictly correct, but you can understand like just like that.)
+
+As long as the p-value is not exactly zero, there is always probability that the genes you call "significantly differentially expressed" are not true or they are false positives. Let's image a simple scenario. Assume you have 10000 genes and all genes
+have p-value of 0.01. Will you take all 10000 genes as differnetially expressed genes? We can simply calculate the probability
+of at least one false positive: `1-(1-0.01)^10000` which is almost 100% true. In other words, for these 10000 genes, there
+must be at least one gene which is false positive. Thus, we need to adjust the raw p-values to reduce false positives
+when you do more than one statistic test (or formally called mulitple testing).
+
+There are several methods that you can check in the document of `p.adjust()` function. One of the most used method is called the "BH" method.
+
+```{r}
+adjp = p.adjust(p_value_t_test, method = "BH")
+```
+
+Check how many genes have p-values < 0.05 and how many genes have adjusted p-values < 0.05.
+
+```{r}
+sum(p_value_t_test < 0.05, na.rm = TRUE)
+sum(adjp < 0.05, na.rm = TRUE)
+```
+
+By looking these two numbers, you can have an impression of how many the false positives are there if you do not apply p-value adjustment.
+
+## Differential expression by DESeq2
+
+When you do statistical test, there is always a null hypothesis (e.g. t-test assume the data follows a normal distribution).
+For RNASeq data which is count-based data, **DESeq2** package provides a more proper test which is designed for count-based
+data.
+
+Before we apply **DESeq2** analysis, we need to convert `anno$dex` to a factor. Here `levels` of `anno$dex` is important
+for calculating log2 fold change. If `levels == c("untrt", "trt")`, a positive log2 fold change means the gene is highly expressed
+in `trt` group. Thus the log2 fold change is calculated as `log2(trt/untrt)`.
+
+```{r}
+anno$dex = factor(anno$dex, levels = c("untrt", "trt"))
+```
+
+Following code performs the DESeq2 differential expression analysis:
+
+```{r}
+# construct the data structure for the analysis
+dds = DESeqDataSetFromMatrix(countData = count,
+	                         colData   = anno,
+	                         design    = ~ dex)
+# perform the analysis
+dds = DESeq(dds)
+# retrieve the results
+res = results(dds)
+# convert to the data frame
+res_dex = as.data.frame(res)
+head(res_dex)
+```
+
+When there is `NA` in the table, it means the counts for the gene are all (or majority) zero
+and not enough for the test.
+
+The columns in `res_dex` are:
+
+- `baseMean`: the row means of the count table which is the mean expression level for genes across samples
+- `log2FoldChange`: log2 fold change between trt and untrt
+- `lfsSE`: standard error of the log2 fold change
+- `stat`: the statistics from the test
+- `pvalue`: raw p-values
+- `padj`: adjusted p-values
+
+Check how many genes are significantly differentially expressed if we set the significance level to 0.05.
+
+```{r}
+sum(res_dex$padj < 0.05, na.rm = TRUE)
+```
+
+We can check the overlap of the differential genes from DESeq2 method and t-test:
+
+```{r}
+library(gplots) # run install.packages("gplots") if not installed
+plot(venn(list(t_test = which(adjp < 0.05), deseq2 = which(res_dex$padj < 0.05))))
+```
+
+We can see the DESeq2 method is more powerful than the t-test because DESeq2 has a more proper null hypothesis or null distribution for testing.
+
+In the DESeq2 results `res_dex`, there are several statistics which are important
+for interpretation of the results. We need `baseMean` to know the expression level
+of genes, we need `log2FoldChange` to know how much the gene is differentially expressed
+between the two groups, and we need `padj` to know which difference is significant.
+A so-called "MA-plot" can visualize these three statistics at a same time.
+
+```{r}
+plot(log10(res_dex$baseMean + 1), res_dex$log2FoldChange, pch = 16, cex = 0.3, 
+	col = ifelse(res_dex$padj < 0.05, "red", "#00000040"))
+```
+
+In the MA-plot, significant genes are marked as red points. From above plot, it generally
+shows when genes have lower expression, the log2 fold change should be higher to be called
+significant, and secondly, the majority of differential genes are intermeidately expressed
+(at around x = 3).
+
+
+After we have a list of differential genes, we can visualize the expression of them as a heamtap.
+
+```{r}
+library(ComplexHeatmap)
+index_sig = which(res_dex$padj < 0.05)
+mat = deseq2[index_sig, ]
+mat_scaled = t(scale(t(mat)))
+Heatmap(mat_scaled, name = "expr", show_row_names = FALSE,
+	top_annotation = HeatmapAnnotation(df = anno, show_annotation_name = TRUE)
+)
+```
+
+For showing the heamtap of differentially expressed genes, we usually use the matrix scaled by rows. 
+You can compare to the original matrix:
+
+```{r}
+Heatmap(mat, name = "expr", show_row_names = FALSE,
+	top_annotation = HeatmapAnnotation(df = anno, show_annotation_name = TRUE)
+)
+```
+
+Similarly, we can look for differentially expressed genes for different cell types:
+
+```{r}
+dds = DESeqDataSetFromMatrix(countData = count,
+	                         colData   = anno,
+	                         design    = ~ cell)  # <<== we change here
+dds = DESeq(dds)
+res = results(dds)
+res_cell = as.data.frame(res)
+# how many differentially expressed genes
+sum(res_cell$padj < 0.05, na.rm = TRUE)
+index_sig = which(res_cell$padj < 0.05)
+mat = deseq2[index_sig, ]
+mat_scaled = t(scale(t(mat)))
+Heatmap(mat_scaled, name = "expr", show_row_names = FALSE,
+	top_annotation = HeatmapAnnotation(df = anno, show_annotation_name = TRUE)
+)
+```
+
+## Functional enrichment
+
+Once we have a list of differetially expressed genes, the next step is always to look for the biological
+functions that the genes are enriched in. 
+
+Normally we use [Fisher's exact test](https://en.wikipedia.org/wiki/Fisher%27s_exact_test) to test the enrichment. Assume $k_{10}$ is the number of differential
+genes, $k_{01}$ is the number of genes annotated in a biological function (or called a term, which is normally from public
+database), $k_{11}$ is the number of differential genes which have the biological function and $k_{00}$ is the
+number of background genes (e.g. total number of human genes). Following 2x2 contingency table is constructed.
+
+|         |has function |no function                |total       |
+|:--------|:------------|:--------------------------|:-----------|
+|is diff  |k_11         |k_10 - k_11                |k_10        |
+|not diff |k_01 - k_11  |k_00 - k_01 - k_10 + k _11 |k_00 - k_10 |
+|total    |k_01         |k_00 - k_01                |k_00        |
+
+
+If differential genes are enriched in the biological function, $k_{11}$ is significantly higher than
+if they are not enriched. Fisher's exact test is designed to test this type of enrichment.
+
+In R, we use **clusterProfiler** package (http://www.bioconductor.org/packages/release/bioc/html/clusterProfiler.html) to perform enrichment analysis. Install it if you haven't had
+it yet:
+
+```{r, eval = FALSE}
+source("https://bioconductor.org/biocLite.R")
+biocLite("clusterProfiler")
+biocLite("org.Hs.eg.db")
+```
+
+In following example, we enrich genes which are highly expressed in "trt" to biological functions.
+
+```{r}
+library(clusterProfiler)
+up_index = which(res_dex$padj < 0.05 & res_dex$log2FoldChange > 0)
+up_genes = rownames(res_dex[up_index, ])
+head(up_genes)
+```
+
+The biological terms (e.g. [Gene Ontology](http://www.geneontology.org/) terms or [KEGG pathway](http://www.genome.jp/kegg/pathway.html) terms) are always from public databases. To enrich differential genes to biological terms, we need
+to map genes to biological terms first. One of the most common problem is the inconsistency between
+gene IDs for differential genes and the gene IDs for genes in biological terms. 
+
+`up_genes` use Ensembl IDs as gene ID while for the Gene Ontology terms which we will use later, the gene IDs
+are NCBI Entrez IDs. First we need to convert Ensembl IDs to Entrez IDs.
+
+**clusterProfiler** provides a `bitr()` function which is easy to convert between different gene ID types.
+
+```{r}
+mapping = bitr(up_genes, fromType = "ENSEMBL", toType = "ENTREZID", OrgDb = "org.Hs.eg.db")
+up_genes = unique(mapping[, 2])
+head(up_genes)
+```
+
+You may see there are warnings saying the mapping is not 100%. There are two reasons. First the genes in our analysis
+also contains non-protein coding genes which do not have a Entrez ID and the second reason is the mapping between 
+different ID types in different public databases is normally not 100% match. But basically it won't affect
+the enrichment analysis.
+
+Run `enrichGO()` to perfrom GO enrichment analysis. in `OrgDb = org.Hs.eg.db` part, `org.Hs.eg.db` is a human
+gene database which is already processed by Bioconductor and `ont` controls the category of GO terms where `BP`
+correspond to `biological functions`, `MF` corresponds to `molecular functions` and `CC` corresponds to `cellular components`.
+Check the document of `enrichGO()` for more detailed explanation.
+
+```{r}
+go = enrichGO(gene = up_genes, OrgDb = org.Hs.eg.db, ont = "BP")
+head(go)
+```
+
+Now `go` contains significant functions where the differential genes are enriched in.
+
+
+**clusterProfiler** package also provides functions to visualize the enrichment results.
+A very useful function is `dotplot()`.
+
+```{r, fig.width = 12}
+dotplot(go, showCategory = 20)
+```
+
+To save it into local file, first convert it to data frame and use `write.table()`
+to write into a file.
+
+```{r}
+go = as.data.frame(go)
+write.csv(go, file = "go_bp_enrichment.csv")
+```
+
+We can do similarly for KEGG pathway enrichment. Note the argument is slightly
+different from `enrichGO()`, you need to check the document of `enrichKEGG()`
+for full usage.
+
+```{r, fig.width = 12}
+kegg = enrichKEGG(gene = up_genes, organism = 'hsa')
+head(kegg)
+dotplot(kegg, showCategory = 20)
+kegg = as.data.frame(kegg)
+write.csv(kegg, file = "kegg_enrichment.csv")
+```
+
+## Exercise
+
+
+### {.tabset}
+
+#### task
+
+Can you do GO and KEGG enrichment for the genes which are __down-regulated__ in "trt" group
+and compare the enriched functions/pathways to those of the "trt" up-regulated genes?
+
+Steps:
+
+1. get the gene list which are down-regulated in trt group
+2. convert to Entrez IDs
+3. do GO enrichment or KEGG enrichment
+4. extract the GO/KEGG ids by e.g. `go$ID`
+5. use `venn()` from **gplots** package to make Venn diagram
+
+#### solution
+
+```{r, fig.width = 12}
+down_index = which(res_dex$padj < 0.05 & res_dex$log2FoldChange < 0)
+down_genes = rownames(res_dex[down_index, ])
+mapping = bitr(down_genes, fromType = "ENSEMBL", toType = "ENTREZID", OrgDb = "org.Hs.eg.db")
+down_genes = unique(mapping[, 2])
+go_down = enrichGO(gene = down_genes, OrgDb = org.Hs.eg.db, ont = "BP")
+kegg_down = enrichKEGG(gene = down_genes, organism = 'hsa')
+
+library(gplots)
+par(mfrow = c(1, 2))
+venn(list(up = go$ID, down = go_down$ID))
+title("GO, up vs down")
+venn(list(up = kegg$ID, down = kegg_down$ID))
+title("KEGG, up vs down")
+```

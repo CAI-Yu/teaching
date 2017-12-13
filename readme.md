@@ -6,3 +6,5 @@
 
 [day3.html](http://eilslabs.github.io/teaching/day_3.html)
 
+[day4.html](http://eilslabs.github.io/teaching/day_4.html)
+
