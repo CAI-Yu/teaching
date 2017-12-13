@@ -344,7 +344,8 @@ Now `go` contains significant functions where the differential genes are enriche
 
 
 **clusterProfiler** package also provides functions to visualize the enrichment results.
-A very useful function is `dotplot()`.
+A very useful function is `dotplot()`. Values on x-axis is the ratio of number of differential
+genes within the term and the number of total genes in the term, calculated as $k_{11}/k_{01}$.
 
 ```{r, fig.width = 12}
 dotplot(go, showCategory = 20)
