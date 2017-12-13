@@ -26,8 +26,10 @@ biocLite("ComplexHeatmap")
 
 Almost all RNASeq downstream analysis starts with the count table which is
 generated from the pipeline. Here we use an example count table from **airway** package
-where there is a dataset called `airway`. We load this dataset
-by using `data()` function.
+where there is a dataset called `airway`. The description of the airway dataset is available
+at http://bioconductor.org/packages/release/data/experiment/html/airway.html.
+
+We load this dataset by using `data()` function.
 
 ```{r}
 library(airway)  # load the airway package
@@ -50,6 +52,8 @@ with the count table as a numeric matrix.
 
 The `airway` dataset also provides annotation/condition variables. but similarly, they are
 stored in a format that might be strange for beginners, thus we convert it to the normal data frame.
+Here we only use two annotations where `cell` corresponds to different cell types and `dex`
+corresponds to the effect of dexamethasone.
 
 ```{r}
 anno = as.data.frame(colData(airway))

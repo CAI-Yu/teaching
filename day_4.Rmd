@@ -1,0 +1,33 @@
+Day 4. RNASeq downsteam analysis, Part 2
+===================================
+
+
+```{r, echo = FALSE}
+library(knitr)
+knitr::opts_chunk$set(
+    error = FALSE,
+    message = FALSE,
+    warning = FALSE,
+    fig.width = 6,
+    fig.height = 6)
+```
+
+by Zuguang Gu (z.gu@dkfz.de), `r Sys.time()`. The github repository
+for this material is at https://github.com/eilslabs/teaching.
+
+We will use three objects `count`, `deseq2` and `anno` which have been generated on day 3. 
+If you forget how to generate them, just run following code:
+
+```{r}
+library(airway)  # load the airway package
+data(airway)
+count = assay(airway)
+
+library(DESeq2)
+deseq2 = vst(count)
+
+anno = as.data.frame(colData(airway))
+anno = anno[, c("cell", "dex")]
+```
+
+
