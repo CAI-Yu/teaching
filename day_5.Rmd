@@ -1,0 +1,498 @@
+Day 5. Advanced visualization for genomic data
+===================================================
+
+```{r, echo = FALSE}
+library(knitr)
+knitr::opts_chunk$set(
+    error = FALSE,
+    message = FALSE,
+    warning = FALSE,
+    fig.width = 6,
+    fig.height = 6)
+```
+
+by Zuguang Gu (z.gu@dkfz.de), `r Sys.time()`. The github repository
+for this material is at https://github.com/eilslabs/teaching.
+
+On day 1 to day 4, we have tried basic statistical plots for visualizing the results
+of the analysis. However, for genomic datasets which are always huge and contain a lot
+of information, there are more advanced visualizations which can give a global, comprehensize and complete
+view of the underlying data.
+
+In this practice, I will introduce several visualization R packages (all developed
+by me) which are easy to make advanced visualizations for genomic datasets.
+
+First load all the packages that we will try.
+
+```{r, eval = FALSE}
+# You can simply copy and paste following lines
+install.packages("circlize")
+install.packages("RColorBrewer")
+
+# I update these packages qute offen, so you need to install the newest version of these packages
+install.packages("http://bioconductor.org/packages/release/bioc/src/contrib/ComplexHeatmap_1.17.1.tar.gz", repo = NULL)
+install.packages("http://bioconductor.org/packages/release/bioc/src/contrib/EnrichedHeatmap_1.9.2.tar.gz", repo = NULL)
+install.packages("https://bioconductor.org/packages/release/bioc/src/contrib/gtrellis_1.11.1.tar.gz", repo = NULL)
+```
+
+```{r}
+library(circlize)      
+library(RColorBrewer)
+library(ComplexHeatmap)
+library(EnrichedHeatmap)
+library(gtrellis)
+```
+
+## ComplexHeatmap package
+
+On day 3 and day 4, we have already tried **ComplexHeatmap** package to make a single heatmap with column annotations.
+The **ComplexHeatmap** has more advanced functionalities which are:
+
+1. easy to plot multiple heamtaps to associate different types of information
+2. to make very complex annotation graphics, both on rows and columns
+3. to split rows by clustering or by variables
+
+You can go to http://zuguang.de/supplementary/ComplexHeatmap-supplementary1-4/ for examples on real-world datasets.
+The documentation of the package is avaiable at http://bioconductor.org/packages/release/bioc/vignettes/ComplexHeatmap/inst/doc/s1.introduction.html
+
+First we demonstrate the **ComplexHeatmap** package by visualizing a public single cell RNASeq data.
+
+```{r}
+download.file("https://eilslabs.github.io/teaching/scrnaseq_top_500_genes.RData", "scrnaseq_top_500_genes.RData")
+load("scrnaseq_top_500_genes.RData")
+mat_scaled = t(scale(t(mat)))
+base_mean = rowMeans(mat)
+mat_cor = cor(t(mat))
+cc_gene = rownames(mat)[ccl]
+
+rpl = rpl + 0 # just to convert logical values to 0/1
+ccl = ccl + 0 # just to convert logical values to 0/1
+```
+
+Complex visualization always replys on complex data processing. In all examples in this practice, 
+the data has already been processed and we focus on the visualization part.
+
+For the single cell RNASeq dataset, there are following variables:
+
+- `mat`: an expression matrix for mouse with 500 genes and 81 cells. The 500 genes are selected by an algorithm that
+   they can best separate cells. This is test data is from [Buettner et al., 2015](http://www.nature.com/nbt/journal/v33/n2/full/nbt.3102.html).
+- `mat_scaled`: same as `mat`, but rows are scaled, 
+- `base_mean`: row means of `mat`, the expression level of each gene
+- `mat_cor`: pair-wise correlation between genes
+- `rpl`: a vector of value 0 or 1 where 1 means the gene is a ribonucleo protein gene
+- `ccl`: a vector of value 0 or 1 where 1 means the gene is a cell cycle gene
+
+Please note for all above variables, the ith row in the matrices or the ith element in the vector always corresponds
+to the same gene.
+
+In the visualization, we want to show how the cells are separated the relation between the genes that separate
+cells and whether the genes are ribonucleo protein genes or cell cycle genes.
+
+Colors are important graphical attributes for heatmap, when the matrix is a numeric matrix, the color mapping
+should be "continuous". To make such color mapping, we need to generate a color mapping function which can be
+applied to the numeric matrix to generate corresponding colors.
+
+Since there are two numeric matrice which are `mat_scaled` and `mat_cor`, we define two color mapping functions
+by the `colorRamp2()` function. `colorRamp2()` function needs to arguments where the first is the break points
+and the second is the corresponding colors, then colors for other values can be automatically calculated by
+the color mapping function.
+
+Take `expr_col_fun` for example, it defines blue for -1.5, white for 0 and red for 1.5, then values between -1.5 and 0
+will be assigned to light blues.
+
+```{r}
+expr_col_fun = colorRamp2(c(-1.5, 0, 1.5), c("blue", "white", "red"))
+cor_col_fun = colorRamp2(c(-1, 0, 1), c("green", "white", "red"))
+```
+
+Following code generates a list of heatmaps which are:
+
+1. expression matrix
+2. base mean matrix (although it is one-column matrix)
+3. whether the genes are ribonucleo protein genes or not
+4. whether the genes are cell cycle genes or not
+5. we mark cell cycle genes with have high expression (larger than the median expression)
+6. the correlation matrix
+
+Note the 5th one is actually a row annotation constructed by `rowAnnotation()`. `rowAnnotation()`
+supports many types of annotation graphics.
+
+All the arguments in `Heatmap()` function are self-explained according to the argument names.
+
+To concatenate heatmaps and row annotations, simply use `+` operator.
+
+```{r}
+ht_list = Heatmap(mat_scaled, 
+		name = "scaled_expr", 
+		col = expr_col_fun, 
+	    show_row_names = FALSE, 
+	    column_title = "relative expression",
+	    show_column_names = FALSE, 
+	    width = unit(8, "cm")) +
+    Heatmap(base_mean, 
+    	name = "base_expr", 
+    	show_row_names = FALSE, 
+    	width = unit(5, "mm")) +
+    Heatmap(rpl, 
+    	name = "ribonucleoprotein", 
+    	col = c("0" = "white", "1" = "purple"), 
+        show_heatmap_legend = FALSE, 
+        width = unit(5, "mm")) +
+    Heatmap(ccl, 
+    	name = "cell_cycle", 
+    	col = c("0" = "white", "1" = "red"), 
+        show_heatmap_legend = FALSE, 
+        width = unit(5, "mm")) +
+    rowAnnotation(link = row_anno_link(
+    		at = which(ccl & base_mean > quantile(base_mean, 0.5)), 
+	        labels = cc_gene, 
+	        labels_gp = gpar(fontsize = 8), padding = 0.5), 
+        width = unit(1, "cm") + max_text_width(cc_gene, gp = gpar(fontsize = 8))) +
+    Heatmap(mat_cor, 
+    	name = "cor", 
+    	col = cor_col_fun, 
+        show_row_names = FALSE, 
+        show_column_names = FALSE, 
+        row_dend_side = "right", 
+        show_column_dend = FALSE, 
+        column_title = "pairwise correlation between genes")
+```
+
+To make the plot, use `draw()` function. Here we set "main_heatmap" to the correlation heatmap by specify
+its "name". 
+
+```{r, fig.width = 10}
+draw(ht_list, main_heatmap = "cor")
+```
+
+Now from the heatmaps, we can make the conclusions:
+
+1. all cells are separated into two groups where one subgroup has quite a lot of 
+genes highly expressed (let's call it cluster 1) and other other subgroup has few genes highly expressed
+(let's call it cluster 2).
+2. cluster 2 genes are mostly cell cycle genes
+3. ribonucleo protein genes are mainly in cluster 1 and have high expressed level
+
+
+The next example is an visualization on the associations between DNA methylation
+and gene expression.
+
+```{r}
+download.file("https://eilslabs.github.io/teaching/meth_expr_integrative.RData", "meth_expr_integrative.RData")
+load("meth_expr_integrative.RData")
+```
+
+In this example, data is randomly generated based on patterns found in an unpublished analysis.
+There are following variables in this data:
+
+- `type`: the label which shows whether the sample is tumor or normal.
+- `mat_meth`: a matrix in which rows correspond to differetially methylated regions (DMRs). The value in the matrix is the mean methylation level in the DMR in every sample.
+- `mat_expr`: a matrix in which rows correspond to genes which are associated to the DMRs (i.e. the nearest gene to the DMR). The value in the matrix is the expression level for each gene in each sample. Expression is scaled for every gene across samples.
+- `direction`: direction of the methylation change (hyper meaning higher methylation in tumor samples, hypo means lower methylation in tumor samples).
+- `cor_pvalue`: p-value for the correlation test between methylation and expression of the associated gene.
+- `gene_type`: type of the genes (e.g. protein coding genes or lincRNAs).
+- `anno_gene`: annotation to the gene models (intergenic, intragenic or TSS).
+- `dist`: distance from DMRs to TSS of the assiciated genes.
+- `anno_enhancer`: fraction of the DMR that overlaps enhancers.
+
+
+Since `mat_meth` and `mat_expr` have same set of samples, we need to make sure the column
+order is same for both matrix. We cluster columns in `mat_meth` and use this column orders 
+as the order of the expression matrix:
+
+```{r}
+column_order = hclust(dist(t(mat_meth)))$order
+```
+
+Similar we define two same column annotations, one for the methylation matrix and one for the expression matrix.
+
+```{r}
+ha = HeatmapAnnotation(df = data.frame(type = type), 
+    col = list(type = c("Tumor" = "pink", "Control" = "royalblue")))
+ha2 = HeatmapAnnotation(df = data.frame(type = type), 
+    col = list(type = c("Tumor" = "pink", "Control" = "royalblue")), 
+    show_legend = FALSE)
+```
+
+Now we make the list of heatmaps:
+
+```{r, fig.width = 14, fig.height = 8}
+ht_list = Heatmap(mat_meth, 
+		name = "methylation", 
+		col = colorRamp2(c(0, 0.5, 1), c("blue", "white", "red")),
+	    cluster_columns = FALSE,
+	    column_order = column_order, 
+	    column_dend_reorder = FALSE, 
+	    top_annotation = ha, 
+	    column_title = "Methylation", 
+	    column_title_gp = gpar(fontsize = 10), 
+	    row_title_gp = gpar(fontsize = 10)) +
+    Heatmap(direction, 
+    	name = "direction", 
+    	col = c("hyper" = "red", "hypo" = "blue")) +
+    Heatmap(mat_expr, 
+    	name = "expression", 
+        col = colorRamp2(c(-2, 0, 2), c("green", "white", "red")), 
+        cluster_columns = FALSE, 
+        column_order = column_order,
+        top_annotation = ha2, 
+        column_title = "Expression", 
+        column_title_gp = gpar(fontsize = 10)) +
+    Heatmap(cor_pvalue, 
+    	name = "-log10(cor_p)", 
+    	col = colorRamp2(c(0, 2, 4), c("white", "white", "red"))) +
+    Heatmap(gene_type, 
+    	name = "gene type", 
+    	col = structure(brewer.pal(length(unique(gene_type)), "Set3"), names = unique(gene_type))) +
+    Heatmap(anno_gene, 
+    	name = "anno_gene", 
+    	col = structure(brewer.pal(length(unique(anno_gene)), "Set1"), 
+        names = unique(anno_gene))) +
+    Heatmap(dist, 
+    	name = "dist_tss", 
+    	col = colorRamp2(c(0, 10000), c("black", "white"))) +
+    Heatmap(anno_enhancer, 
+    	name = "anno_enhancer", 
+    	col = colorRamp2(c(0, 1), c("white", "orange")), 
+        cluster_columns = FALSE, 
+        column_title = "Enhancer", 
+        column_title_gp = gpar(fontsize = 10))
+
+draw(ht_list, 
+	column_title = "Comprehensive correspondence between methylation, expression and other genomic features", 
+    heatmap_legend_side = "bottom")
+```
+
+What if we split rows into several sub-cluster based on methylation pattern?
+
+```{r, fig.width = 14, fig.height = 8}
+draw(ht_list, km = 5,
+	column_title = "Comprehensive correspondence between methylation, expression and other genomic features", 
+    heatmap_legend_side = "bottom")
+```
+
+When spitting rows by k-means clustering into 5 sub-clusters, we can see the patterns
+and association more clear that the low methylated regions are enriched at
+TSS and enhancers while high methylated regions are enriched at intergenic regions.
+
+## EnrichedHeatmap package
+
+Sometimes in the analysis, we are interested at whether genomic signals (e.g. methylation) are enriched at specific
+genomic targets (e.g. tss). Here we can use the **EnrichedHeatmap** package to visualize such enrichment.
+
+In following code, we visualize the enrichment of DNA methylation and H3K4me3 histone modification
+around gene TSS.
+
+The visuaization includes two steps:
+
+1. normalize the association between signals and targets into matrix by `normalizeToMatrix()`
+2. visualize the matrix by `EnrichedHeatmap()` function
+
+```{r}
+load(system.file("extdata", "chr21_test_data.RData", package = "EnrichedHeatmap"))
+tss = promoters(genes, upstream = 0, downstream = 1)
+mat1 = normalizeToMatrix(H3K4me3, tss, 
+	value_column = "coverage", # which column in `H3K4me3` is the value column
+    extend = 5000, # extension to upstream and downstream of tss
+    mean_mode = "w0", # methods to calculate mean signal in each window
+    w = 50,  # window size
+    keep = c(0, 0.99))
+mat2 = normalizeToMatrix(meth, tss, 
+	value_column = "meth", 
+	mean_mode = "absolute",
+    extend = 5000, 
+    w = 50, 
+    background = NA, 
+    smooth = TRUE)
+```
+
+Visualize heatmaps for methylation, histone modification as well as gene expression as
+a list of heatmaps.
+
+```{r, fig.width = 4, rig.height = 10}
+meth_col_fun = colorRamp2(c(0, 0.5, 1), c("blue", "white", "red"))
+ht_list = EnrichedHeatmap(mat1, 
+		col = c("white", "red"), 
+		name = "H3K4me3") + 
+	EnrichedHeatmap(mat2, 
+		col = meth_col_fun, 
+		name = "methylation") +
+	Heatmap(log2(rpkm+1), 
+		col = c("white", "orange"), 
+		name = "log2(rpkm+1)", 
+	    show_row_names = FALSE, 
+	    width = unit(5, "mm"))
+draw(ht_list)
+```
+
+Generally we can see from the plot that the signal of H3K4me3 and low methylation are 
+enriched a little bit after TSS and high signals correspond to high gene expression.
+
+What if we split the heatmaps into three row clusters based on methylation matrix?
+
+```{r, fig.width = 4, rig.height = 10}
+draw(ht_list, km = 2, main_heatmap = "methylation")
+```
+
+**EnrichedHeatmap** is good for association analysis for different epigenomic datasets.
+You can find an very complex visualization at http://bioconductor.org/packages/release/bioc/vignettes/EnrichedHeatmap/inst/doc/roadmap.html#toc_7.
+
+## gtrellis package
+
+After we have a list of genomic regions, some times we are interested in the distribution
+of the regions on the chromosomes. **gtrellis** privides an efficient way to visualize
+genomic regions by chromosomes. The full documentation of **gtrellis** is at https://bioconductor.org/packages/release/bioc/vignettes/gtrellis/inst/doc/gtrellis.html.
+
+In following example `gwas` contains positions of SNPs as well as the p-values for determine
+the SNPs. Since p-values themselves are small, we use `-log10(pvalue)` instead.
+
+```{r}
+load(system.file("extdata", "gwasCatalog.RData", package = "gtrellis"))
+v = -log10(gwas[, "p-value"])
+```
+
+There can be some p-values which are super small and behaves as outliers. Here the value
+of outliers are replaced by the 95th percentile.
+
+```{r}
+# remove outliers
+q95 = quantile(v, 0.95)
+v[v > q95] = q95
+```
+
+In the first try, we initialize the layout as one-row layout.
+
+```{r, fig.width = 14}
+gtrellis_layout(category = paste0("chr", 1:22), 
+	track_ylim = range(v), 
+	track_ylab = "-log10(p)")
+add_points_track(gwas, v, gp = gpar(col = "#00000080"))
+```
+
+First we make the normal plot. From the plot below, basically we can only see there are SNPs that show high significance and on chromosome 6 there exists a cluster where the SNP density are very high.
+
+Next we adjust the layout, also we add another track which shows the number of SNPs in 5MB genomic windows. In the new layout, width for each chromosome is much wider than the previous plot, thus, it shows very clearly for the distribution pattern of highly significant SNPs in the genome (in the previous plot, due to the narrow plotting area for each chromosome, the distribution of SNPs seems random). The additional track gives an exact view that SNP density is dominantly high in a cluster on chromosome 6 and there are also many small hotspot mutation areas spreading the genome.
+
+```{r, fig.width = 14, fig.height = 10}
+# how many SNPs in every 5MB window
+d = genomicDensity(gwas, 5e6)
+d[, 4] = d[, 4] * 5e6
+head(d)
+gtrellis_layout(nrow = 4, 
+	byrow = FALSE, 
+	n_track = 2, 
+	category = paste0("chr", 1:22),
+	add_ideogram_track = TRUE, 
+	add_name_track=TRUE, 
+	track_ylim = c(range(v), range(d[, 4])),
+	track_height = c(2, 1), 
+	track_ylab = c("-log10(p)", "#SNP"))
+add_points_track(gwas, v, gp = gpar(col = "#00000080"))
+add_lines_track(d, d[, 4], area = TRUE, gp = gpar(fill = "#999999", col = NA))
+```
+
+## circlize package
+
+**circlize** provides a general and powerful solution for generating circular layout in R. It is 
+greatly used in genomic data visualization. The package has extensive documentations (http://zuguang.de/circlize_book/book/)
+and examples (http://zuguang.de/circlize/).
+
+**circlize** can do a lot of cool things. In this practice, we only go some simple examples.
+
+The first example also shows the distribution of differnetially methylated regions on chromosomes. In the
+dataset, there are two variables `DMR_hyper` and `DMR_hypo` which are DMRs show high methylation in treatment
+samples and show low methylation in treatment samples.
+
+In following code, we creat severa tracks:
+
+1. the ideogram track
+2. the rainfall track for `DMR_hyper` and `DMR_hypo`
+3. the genomic density track for `DMR_hyper`
+4. the genomic density track for `DMR_hypo`
+
+**What is "rainfall"?** For a set of sorted regions (sort first by chromosomes and then start positions),
+for region i, the distance to region i-1 and the distance to region i + 1 are calculated and the minimal
+value is assigned to region i as the distance to neighbouring regions. Then, when this distance value
+is small, it means this genomic region is close to its neighbouring regions. If we plot the distance (or log(distance))
+as y-axes on the plot, then when there is a rain drop in the plot, it means there is a cluster of regions where
+the neighbouring distance is relatively small.
+
+**What is genomic density?** For a chromosome, it is segmented by a certain window size (e.g. 10MB). For a specific
+type of genomic regions, the percent of every 10MB window that is covered by the input regions is calculated. Thus,
+when the percent value is high, it means the window is more covered by the input region.
+
+You can see very easily where are the hyper-DMR clusters and where are the hypo-DMR clusters.
+
+```{r}
+load(system.file(package = "circlize", "extdata", "DMR.RData"))
+circos.initializeWithIdeogram(chromosome.index = paste0("chr", 1:22))
+
+bed_list = list(DMR_hyper, DMR_hypo)
+circos.genomicRainfall(bed_list, pch = 16, cex = 0.3, col = c("#FF000080", "#0000FF80"))
+circos.genomicDensity(DMR_hyper, col = c("#FF000080"), track.height = 0.1)
+circos.genomicDensity(DMR_hypo, col = c("#0000FF80"), track.height = 0.1)
+```
+
+Next we visualize genomic translocations. For the translocation, a position in the genome
+is connected to other position in the genome (maybe in a different chromosome). In following
+example, the translocation is randomly generated.
+
+```{r}
+bed1 = generateRandomBed(nr = 100)
+bed1 = bed1[sample(nrow(bed1), 20), ]
+bed1[, 2] = bed1[, 3] # since each end of the translocation in single base
+bed1$gene = paste0("gene1_", 1:nrow(bed1))
+bed2 = generateRandomBed(nr = 100)
+bed2 = bed2[sample(nrow(bed2), 20), ]
+bed2[, 2] = bed2[, 3]
+bed2$gene = paste0("gene2_", 1:nrow(bed2))
+head(bed1)
+head(bed2)
+```
+
+In following, we add the gene labels and the translocations are visualized as circular links.
+
+```{r}
+circos.initializeWithIdeogram(plotType = c("axis", "labels"))
+circos.genomicLabels(rbind(bed1, bed2), labels.column = "gene", 
+	side = "outside")
+circos.genomicIdeogram()
+circos.genomicLink(bed1, bed2, 
+	col = rand_color(nrow(bed1)), 
+    border = NA)
+```
+
+**circlize** is good at visualizing relations which are encoded as matrice (as correlation matrices).
+This type of plot is always called [the chord diagram](https://en.wikipedia.org/wiki/Chord_diagram).
+
+`mat` contains chromatin states transitions between two biological conditions. For different regions
+in chromosomes, they may have different chromatin states (e.g. active transcription states or repressive
+states). Between different biological conditions, the chromatin states may change for a same region.
+The most common example is the tss of expressed genes always have active transcription states and in cancer
+the gene expression might be suppressed and the states for tss will become repressive states. The value
+in `mat` is the total bases of the regions that the chromatin states change.
+
+```{r}
+download.file("https://eilslabs.github.io/teaching/chromatin_states_transition.RData", "chromatin_states_transition.RData")
+load("chromatin_states_transition.RData")
+mat
+```
+
+There are in total 15 chromatin states calculated by some tool. the first 8 are active states (classified
+into 8 sub states, e.g. active tss, active enhancer, ...), then 6 repressive states and one null state (which means
+these regions has no function for transcription regulation). We assign colors to states. 
+
+```{r}
+grid.col = c(rep("red", 8), rep("blue", 6), "black")
+grid.col = c(grid.col, grid.col)
+
+circos.par(gap.after = c(rep(1, 14), 10, rep(1, 14), 10))
+chordDiagram(mat, annotationTrack = "grid", grid.col = grid.col)
+circos.clear()
+```
+
+
+## HilbertCurve package
+
+These is a more interesting package called **HilbertCurve** which provides a high resolution visualization of genomic data.
+You can go to https://bioconductor.org/packages/release/bioc/vignettes/HilbertCurve/inst/doc/HilbertCurve.html if you are interested.

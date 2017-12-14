@@ -1,4 +1,4 @@
-Rscript -e "rmarkdown::render('day_4.Rmd', rmarkdown::html_document())"
+Rscript -e "rmarkdown::render('day_5.Rmd', rmarkdown::html_document())"
 git add --all
 git commit -m "update"
 git push origin master
