@@ -331,7 +331,7 @@ enriched a little bit after TSS and high signals correspond to high gene express
 What if we split the heatmaps into three row clusters based on methylation matrix?
 
 ```{r, fig.width = 4, rig.height = 10}
-draw(ht_list, km = 2, main_heatmap = "methylation")
+draw(ht_list, main_heatmap = "methylation", km = 2, cluster_rows = TRUE)
 ```
 
 **EnrichedHeatmap** is good for association analysis for different epigenomic datasets.
@@ -490,6 +490,8 @@ circos.par(gap.after = c(rep(1, 14), 10, rep(1, 14), 10))
 chordDiagram(mat, annotationTrack = "grid", grid.col = grid.col)
 circos.clear()
 ```
+
+A complex visualization based on this dataset is at http://zuguang.de/circlize_book/book/a-complex-example-of-chord-diagram.html.
 
 
 ## HilbertCurve package
