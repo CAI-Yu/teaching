@@ -289,7 +289,8 @@ TSS and enhancers while high methylated regions are enriched at intergenic regio
 
 **Exercise** Can you construct a heatmap list which only contains the methylation heatmap and the expression heatmap?
 
-Hint: you only need to add the methylation heatmap and the expression heatmap.
+Hint: you only need to add the methylation heatmap and the expression heatmap. Can you set the expression matrix
+as the main matrix and compare to the previous one?
 
 ## EnrichedHeatmap package
 
@@ -323,19 +324,21 @@ mat2 = normalizeToMatrix(meth, tss,
     smooth = TRUE)  # smooth methylation
 ```
 
+For explanation of different "mean_mode", go to http://www.bioconductor.org/packages/devel/bioc/vignettes/EnrichedHeatmap/inst/doc/EnrichedHeatmap.html#toc_6.
+
 Visualize heatmaps for methylation, histone modification as well as gene expression as
 a list of heatmaps.
 
 ```{r, fig.width = 6, rig.height = 10}
 meth_col_fun = colorRamp2(c(0, 0.5, 1), c("blue", "white", "red"))
 ht_list = EnrichedHeatmap(mat1, 
-		col = c("white", "red"), 
+		col = c("white", "red"),  # when we define two colors, one corresponds to the minimal and one corresponds to the maximum
 		name = "H3K4me3") + 
 	EnrichedHeatmap(mat2, 
 		col = meth_col_fun, 
 		name = "methylation") +
 	Heatmap(log2(rpkm+1), 
-		col = c("white", "orange"), # when we define two colors, one corresponds to the minimal and one corresponds to the maximum
+		col = c("white", "orange"),
 		name = "log2(rpkm+1)", 
 	    show_row_names = FALSE, 
 	    width = unit(5, "mm"))
@@ -345,12 +348,12 @@ draw(ht_list)
 Generally we can see from the plot that the signal of H3K4me3 and low methylation are 
 enriched a little bit after TSS and high signals correspond to high gene expression.
 
-What if we split the heatmaps into three row clusters based on methylation matrix and use hierarchical
+What if we split the heatmaps into two row clusters based on methylation matrix and use hierarchical
 clustering to determine the row order?
 
 ```{r, fig.width = 6, rig.height = 10}
 set.seed(123)  # because k-means use random number generations
-draw(ht_list, main_heatmap = "methylation", km = 3, cluster_rows = TRUE, show_row_dend = FALSE)
+draw(ht_list, main_heatmap = "methylation", km = 2, cluster_rows = TRUE, show_row_dend = FALSE)
 ```
 
 **EnrichedHeatmap** is good for association analysis for different epigenomic datasets.
@@ -370,7 +373,7 @@ load(system.file("extdata", "gwasCatalog.RData", package = "gtrellis"))
 v = -log10(gwas[, "p-value"])
 ```
 
-There can be some p-values which are super small and behaves as outliers. Here the value
+There can be some p-values which are super small and behave as outliers. Here the value
 of outliers are replaced by the 95th percentile.
 
 ```{r}
@@ -382,10 +385,10 @@ v[v > q95] = q95
 In the first try, we initialize the layout as one-row layout.
 
 ```{r, fig.width = 14}
-gtrellis_layout(category = paste0("chr", 1:22), 
-	track_ylim = range(v), 
+gtrellis_layout(category = paste0("chr", 1:22), # which chromosome
+	track_ylim = range(v),   # range on y-axes
 	track_ylab = "-log10(p)")
-add_points_track(gwas, v, gp = gpar(col = "#00000080"))
+add_points_track(gwas, v, gp = gpar(col = "#00000080")) # points as the first track
 ```
 
 First we make the normal plot. From the plot below, basically we can only see there are SNPs that show high significance and on chromosome 6 there exists a cluster where the SNP density are very high.
@@ -418,11 +421,11 @@ and examples (http://zuguang.de/circlize/).
 
 **circlize** can do a lot of cool things. In this practice, we only go some simple examples.
 
-The first example also shows the distribution of differnetially methylated regions on chromosomes. In the
+The first example shows the distribution of differentially methylated regions (DMRs) on chromosomes. In the
 dataset, there are two variables `DMR_hyper` and `DMR_hypo` which are DMRs show high methylation in treatment
 samples and show low methylation in treatment samples.
 
-In following code, we creat severa tracks:
+In following code, we creat several tracks:
 
 1. the ideogram track
 2. the rainfall track for `DMR_hyper` and `DMR_hypo`
@@ -438,7 +441,7 @@ the neighbouring distance is relatively small.
 
 **What is genomic density?** For a chromosome, it is segmented by a certain window size (e.g. 10MB). For a specific
 type of genomic regions, the percent of every 10MB window that is covered by the input regions is calculated. Thus,
-when the percent value is high, it means the window is more covered by the input region.
+when the percent value is high, it means the window is more covered by the input regions.
 
 You can see very easily where are the hyper-DMR clusters and where are the hypo-DMR clusters.
 
@@ -448,15 +451,16 @@ circos.initializeWithIdeogram(chromosome.index = paste0("chr", 1:22))
 
 bed_list = list(DMR_hyper, DMR_hypo)
 circos.genomicRainfall(bed_list, pch = 16, cex = 0.3, col = c("#FF000080", "#0000FF80"))
-circos.genomicDensity(DMR_hyper, col = c("#FF000080"), track.height = 0.1)
-circos.genomicDensity(DMR_hypo, col = c("#0000FF80"), track.height = 0.1)
+circos.genomicDensity(DMR_hyper, col = "#FF000080", track.height = 0.1)
+circos.genomicDensity(DMR_hypo, col = "#0000FF80", track.height = 0.1)
 ```
 
-Next we visualize genomic translocations. For the translocation, a position in the genome
+Next we visualize genomic translocations. For the translocation, one position in the genome
 is connected to other position in the genome (maybe in a different chromosome). In following
 example, the translocation is randomly generated.
 
-Note the number of rows in `bed1` and `bed2` should be the same, which means, they should be paired.
+Note the number of rows in `bed1` and `bed2` should be the same, which means, they should be paired(one end of the
+translocation in `bed1` and the other end is in `bed2`).
 
 ```{r}
 bed1 = generateRandomBed(nr = 100)
@@ -475,7 +479,8 @@ In following, we add the gene labels and the translocations are visualized as ci
 
 ```{r}
 circos.initializeWithIdeogram(plotType = c("axis", "labels"))
-circos.genomicLabels(rbind(bed1, bed2), labels.column = "gene", 
+circos.genomicLabels(rbind(bed1, bed2), 
+    labels.column = "gene", # which column contains gene names?
 	side = "outside")
 circos.genomicIdeogram()
 circos.genomicLink(bed1, bed2, 
@@ -483,7 +488,7 @@ circos.genomicLink(bed1, bed2,
     border = NA)
 ```
 
-**circlize** is good at visualizing relations which are encoded as matrice (as correlation matrices).
+**circlize** is good at visualizing relations which are encoded as matrice (e.g. correlation matrices).
 This type of plot is always called [the chord diagram](https://en.wikipedia.org/wiki/Chord_diagram).
 
 `mat` contains chromatin states transitions between two biological conditions. For different regions
@@ -499,16 +504,22 @@ load("chromatin_states_transition.RData")
 mat
 ```
 
-There are in total 15 chromatin states calculated by some tool. the first 8 are active states (classified
+There are in total 15 chromatin states calculated by some tool (the tool is called [chromHMM](http://compbio.mit.edu/ChromHMM/)). 
+the first 8 are active states (classified
 into 8 sub states, e.g. active tss, active enhancer, ...), then 6 repressive states and one null state (which means
-these regions has no function for transcription regulation). We assign colors to states. 
+these regions have no function for transcription regulation). 
 
-Here `circos.par()` controls global parameters for the circular layout.
+We assign colors to states. Since both biological conditions (which are represented as rows and columns in the matrix),
+`grid.col` is replicated twice.
 
 ```{r}
 grid.col = c(rep("red", 8), rep("blue", 6), "black")
 grid.col = c(grid.col, grid.col)
+```
 
+We use `chordDiagram()` function to make the plot. Here `circos.par()` controls global parameters for the circular layout.
+
+```{r}
 circos.par(gap.after = c(rep(1, 14), 10, rep(1, 14), 10))
 chordDiagram(mat, annotationTrack = "grid", grid.col = grid.col)
 circos.clear()
