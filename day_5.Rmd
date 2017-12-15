@@ -29,7 +29,7 @@ First load all the packages that we will try.
 install.packages("circlize")
 install.packages("RColorBrewer")
 
-# I update these packages qute offen, so you need to install the newest version of these packages
+# I update these packages quite offen, so you need to install the newest version of these packages
 install.packages("http://bioconductor.org/packages/release/bioc/src/contrib/ComplexHeatmap_1.17.1.tar.gz", repo = NULL)
 install.packages("http://bioconductor.org/packages/release/bioc/src/contrib/EnrichedHeatmap_1.9.2.tar.gz", repo = NULL)
 install.packages("https://bioconductor.org/packages/release/bioc/src/contrib/gtrellis_1.11.1.tar.gz", repo = NULL)
@@ -48,12 +48,13 @@ library(gtrellis)
 On day 3 and day 4, we have already tried **ComplexHeatmap** package to make a single heatmap with column annotations.
 The **ComplexHeatmap** has more advanced functionalities which are:
 
-1. easy to plot multiple heamtaps to associate different types of information
+1. easy to plot multiple heatmaps to associate different types of information
 2. to make very complex annotation graphics, both on rows and columns
 3. to split rows by clustering or by variables
+4. easy to add self-defined graphics on the heatmaps
 
 You can go to http://zuguang.de/supplementary/ComplexHeatmap-supplementary1-4/ for examples on real-world datasets.
-The documentation of the package is avaiable at http://bioconductor.org/packages/release/bioc/vignettes/ComplexHeatmap/inst/doc/s1.introduction.html
+The documentation of the package is avaiable at http://bioconductor.org/packages/release/bioc/html/ComplexHeatmap.html#bioc_citation.
 
 First we demonstrate the **ComplexHeatmap** package by visualizing a public single cell RNASeq data.
 
@@ -70,7 +71,7 @@ ccl = ccl + 0 # just to convert logical values to 0/1
 ```
 
 Complex visualization always replys on complex data processing. In all examples in this practice, 
-the data has already been processed and we focus on the visualization part.
+the data has already been processed and we only focus on the visualization part.
 
 For the single cell RNASeq dataset, there are following variables:
 
@@ -81,19 +82,22 @@ For the single cell RNASeq dataset, there are following variables:
 - `mat_cor`: pair-wise correlation between genes
 - `rpl`: a vector of value 0 or 1 where 1 means the gene is a ribonucleo protein gene
 - `ccl`: a vector of value 0 or 1 where 1 means the gene is a cell cycle gene
+- `cc_gene`: a character vector of cell cycle genes.
 
-Please note for all above variables, the ith row in the matrices or the ith element in the vector always corresponds
-to the same gene.
+If you are not sure of what kind of data stored in these variables, you can use `head()` function 
+to print the top 6 elements in these variables.
 
-In the visualization, we want to show how the cells are separated the relation between the genes that separate
-cells and whether the genes are ribonucleo protein genes or cell cycle genes.
+**Please note for all above variables, the i^th row in the matrices or the i^th element in the vector always corresponds
+to the same gene.**
+
+In the visualization, we want to show how the cells are separated and whether the genes are ribonucleo protein genes or cell cycle genes.
 
 Colors are important graphical attributes for heatmap, when the matrix is a numeric matrix, the color mapping
-should be "continuous". To make such color mapping, we need to generate a color mapping function which can be
+should be "continuous". To make such color mapping, we need to generate a __color mapping function__ which can be
 applied to the numeric matrix to generate corresponding colors.
 
 Since there are two numeric matrice which are `mat_scaled` and `mat_cor`, we define two color mapping functions
-by the `colorRamp2()` function. `colorRamp2()` function needs to arguments where the first is the break points
+by the `colorRamp2()` function. `colorRamp2()` function needs two arguments where the first is the break points
 and the second is the corresponding colors, then colors for other values can be automatically calculated by
 the color mapping function.
 
@@ -101,25 +105,27 @@ Take `expr_col_fun` for example, it defines blue for -1.5, white for 0 and red f
 will be assigned to light blues.
 
 ```{r}
-expr_col_fun = colorRamp2(c(-1.5, 0, 1.5), c("blue", "white", "red"))
-cor_col_fun = colorRamp2(c(-1, 0, 1), c("green", "white", "red"))
+expr_col_fun = colorRamp2(c(-1.5, 0, 1.5), 
+                          c("blue", "white", "red"))
+cor_col_fun = colorRamp2(c(-1, 0, 1), 
+                         c("green", "white", "red"))
 ```
 
-Following code generates a list of heatmaps which are:
+Following code generates a list of heatmaps which are for:
 
 1. expression matrix
 2. base mean matrix (although it is one-column matrix)
 3. whether the genes are ribonucleo protein genes or not
 4. whether the genes are cell cycle genes or not
-5. we mark cell cycle genes with have high expression (larger than the median expression)
+5. we mark cell cycle genes with have high expression (larger than the median expression) as labels
 6. the correlation matrix
 
+All heatmaps are concatenated by the "+" operator.
+
 Note the 5th one is actually a row annotation constructed by `rowAnnotation()`. `rowAnnotation()`
-supports many types of annotation graphics.
+supports many types of annotation graphics such as barplots, point plots...
 
 All the arguments in `Heatmap()` function are self-explained according to the argument names.
-
-To concatenate heatmaps and row annotations, simply use `+` operator.
 
 ```{r}
 ht_list = Heatmap(mat_scaled, 
@@ -165,7 +171,7 @@ its "name".
 draw(ht_list, main_heatmap = "cor")
 ```
 
-Now from the heatmaps, we can make the conclusions:
+Now from the heatmaps, we can make following conclusions:
 
 1. all cells are separated into two groups where one subgroup has quite a lot of 
 genes highly expressed (let's call it cluster 1) and other other subgroup has few genes highly expressed
@@ -195,16 +201,22 @@ There are following variables in this data:
 - `dist`: distance from DMRs to TSS of the assiciated genes.
 - `anno_enhancer`: fraction of the DMR that overlaps enhancers.
 
+Again, if you don't know what values are stored in these variables, just use `head()` function to check.
 
 Since `mat_meth` and `mat_expr` have same set of samples, we need to make sure the column
-order is same for both matrix. We cluster columns in `mat_meth` and use this column orders 
+order is same for both matrices. We cluster columns in `mat_meth` and use this column orders 
 as the order of the expression matrix:
+
+Here `hclust()` which stands for hierarchical clustering need a distance matrix that can be calculated
+by `dist()` function and in the results returned by `hclust()`, the `order` element contains the order
+after hierarchical clustering. This is what the following code means.
 
 ```{r}
 column_order = hclust(dist(t(mat_meth)))$order
 ```
 
 Similar we define two same column annotations, one for the methylation matrix and one for the expression matrix.
+You can use the variable `ha` for both matrices, but the legend for this annotation will be repeated twice.
 
 ```{r}
 ha = HeatmapAnnotation(df = data.frame(type = type), 
@@ -275,17 +287,22 @@ When spitting rows by k-means clustering into 5 sub-clusters, we can see the pat
 and association more clear that the low methylated regions are enriched at
 TSS and enhancers while high methylated regions are enriched at intergenic regions.
 
+**Exercise** Can you construct a heatmap list which only contains the methylation heatmap and the expression heatmap?
+
+Hint: you only need to add the methylation heatmap and the expression heatmap.
+
 ## EnrichedHeatmap package
 
-Sometimes in the analysis, we are interested at whether genomic signals (e.g. methylation) are enriched at specific
-genomic targets (e.g. tss). Here we can use the **EnrichedHeatmap** package to visualize such enrichment.
+Sometimes in the analysis, we are interested in whether genomic signals (e.g. DNA methylation) are enriched at specific
+genomic targets (e.g. TSS). Here we can use the **EnrichedHeatmap** package to visualize such enrichment.
 
-In following code, we visualize the enrichment of DNA methylation and H3K4me3 histone modification
-around gene TSS.
+In following code, we visualize the enrichment of DNA methylation and [H3K4me3](https://en.wikipedia.org/wiki/H3K4me3) 
+histone modification around gene TSS.
 
-The visuaization includes two steps:
+The visualization includes two steps:
 
-1. normalize the association between signals and targets into matrix by `normalizeToMatrix()`
+1. normalize the association between signals and targets into matrix by `normalizeToMatrix()` where rows are genes
+   and columns are small windows around TSS. The value in each window are the mean signal for the genomic signals fall in.
 2. visualize the matrix by `EnrichedHeatmap()` function
 
 ```{r}
@@ -296,20 +313,20 @@ mat1 = normalizeToMatrix(H3K4me3, tss,
     extend = 5000, # extension to upstream and downstream of tss
     mean_mode = "w0", # methods to calculate mean signal in each window
     w = 50,  # window size
-    keep = c(0, 0.99))
+    keep = c(0, 0.99))  # to adjust outliers
 mat2 = normalizeToMatrix(meth, tss, 
 	value_column = "meth", 
 	mean_mode = "absolute",
     extend = 5000, 
     w = 50, 
     background = NA, 
-    smooth = TRUE)
+    smooth = TRUE)  # smooth methylation
 ```
 
 Visualize heatmaps for methylation, histone modification as well as gene expression as
 a list of heatmaps.
 
-```{r, fig.width = 4, rig.height = 10}
+```{r, fig.width = 6, rig.height = 10}
 meth_col_fun = colorRamp2(c(0, 0.5, 1), c("blue", "white", "red"))
 ht_list = EnrichedHeatmap(mat1, 
 		col = c("white", "red"), 
@@ -318,7 +335,7 @@ ht_list = EnrichedHeatmap(mat1,
 		col = meth_col_fun, 
 		name = "methylation") +
 	Heatmap(log2(rpkm+1), 
-		col = c("white", "orange"), 
+		col = c("white", "orange"), # when we define two colors, one corresponds to the minimal and one corresponds to the maximum
 		name = "log2(rpkm+1)", 
 	    show_row_names = FALSE, 
 	    width = unit(5, "mm"))
@@ -328,10 +345,12 @@ draw(ht_list)
 Generally we can see from the plot that the signal of H3K4me3 and low methylation are 
 enriched a little bit after TSS and high signals correspond to high gene expression.
 
-What if we split the heatmaps into three row clusters based on methylation matrix?
+What if we split the heatmaps into three row clusters based on methylation matrix and use hierarchical
+clustering to determine the row order?
 
-```{r, fig.width = 4, rig.height = 10}
-draw(ht_list, main_heatmap = "methylation", km = 2, cluster_rows = TRUE)
+```{r, fig.width = 6, rig.height = 10}
+set.seed(123)  # because k-means use random number generations
+draw(ht_list, main_heatmap = "methylation", km = 3, cluster_rows = TRUE, show_row_dend = FALSE)
 ```
 
 **EnrichedHeatmap** is good for association analysis for different epigenomic datasets.
@@ -437,6 +456,8 @@ Next we visualize genomic translocations. For the translocation, a position in t
 is connected to other position in the genome (maybe in a different chromosome). In following
 example, the translocation is randomly generated.
 
+Note the number of rows in `bed1` and `bed2` should be the same, which means, they should be paired.
+
 ```{r}
 bed1 = generateRandomBed(nr = 100)
 bed1 = bed1[sample(nrow(bed1), 20), ]
@@ -482,6 +503,8 @@ There are in total 15 chromatin states calculated by some tool. the first 8 are 
 into 8 sub states, e.g. active tss, active enhancer, ...), then 6 repressive states and one null state (which means
 these regions has no function for transcription regulation). We assign colors to states. 
 
+Here `circos.par()` controls global parameters for the circular layout.
+
 ```{r}
 grid.col = c(rep("red", 8), rep("blue", 6), "black")
 grid.col = c(grid.col, grid.col)
@@ -497,4 +520,5 @@ A complex visualization based on this dataset is at http://zuguang.de/circlize_b
 ## HilbertCurve package
 
 These is a more interesting package called **HilbertCurve** which provides a high resolution visualization of genomic data.
-You can go to https://bioconductor.org/packages/release/bioc/vignettes/HilbertCurve/inst/doc/HilbertCurve.html if you are interested.
+You can go to https://bioconductor.org/packages/release/bioc/vignettes/HilbertCurve/inst/doc/HilbertCurve.html and
+http://zuguang.de/supplementary/HilbertCurve-supplementary1-6/index.html if you are interested.
